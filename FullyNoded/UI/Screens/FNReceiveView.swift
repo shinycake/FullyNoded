@@ -41,7 +41,7 @@ struct FNReceiveView: View {
                             .font(.fnMono(.footnote))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-                            .textSelection(.enabled)
+                            .textSelection(isDemoAddress ? .disabled : .enabled)
 
                         HStack(spacing: 12) {
                             Button { } label: {

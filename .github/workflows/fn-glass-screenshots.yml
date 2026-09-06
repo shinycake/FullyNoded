@@ -1,0 +1,132 @@
+name: FN Glass Screenshots
+
+# Single trigger to avoid double-runs on the same PR push.
+# Skip Docs/artifact-only pushes — those re-uploads of PNGs must not
+# re-run the flaky simulator capture (already proven on code commits).
+on:
+  pull_request:
+    paths-ignore:
+      - 'Docs/**'
+      - 'artifacts/**'
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  gallery-screenshots:
+    name: Build gallery + capture iOS 26 Liquid Glass screenshots
+    runs-on: macos-15
+    # Prefer macos-15; if runners lack Xcode 26, switch to macos-26.
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26+ (Liquid Glass compiler)
+        run: |
+          set -euo pipefail
+          echo "Available Xcodes:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+
+          pick=""
+          best=-1
+          for app in /Applications/Xcode*.app; do
+            [[ -d "$app" ]] || continue
+            ver=$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>/dev/null | awk '/Xcode/{print $2}' || true)
+            [[ -n "$ver" ]] || continue
+            major=${ver%%.*}
+            score=$major
+            case "$app" in *beta*|*Beta*) score=$((score + 1));; esac
+            if (( score > best )); then
+              best=$score
+              pick=$app
+            fi
+          done
+
+          if [[ -z "$pick" ]]; then
+            echo "ERROR: No Xcode.app found" >&2
+            exit 1
+          fi
+
+          echo "Selecting $pick"
+          sudo xcode-select -s "$pick/Contents/Developer"
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | awk '/Xcode/{print $2}' | cut -d. -f1)
+          if (( MAJOR < 26 )); then
+            echo "ERROR: Need Xcode 26+ for #if compiler(>=6.2) Liquid Glass APIs (found $MAJOR)." >&2
+            echo "macos-15 runner does not currently ship a glass-capable Xcode." >&2
+            exit 2
+          fi
+
+          # GHA often ships Xcode 26 without the iOS 26 runtime preinstalled.
+          xcrun simctl list >/dev/null 2>&1 || true
+          echo "Runtimes before download:"
+          xcrun simctl list runtimes || true
+          if ! xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])'; then
+            echo "No iOS 26+ runtime yet — downloading platform (may take several minutes)…"
+            xcodebuild -downloadPlatform iOS -architectureVariant universal || \
+              xcodebuild -downloadPlatform iOS || true
+          fi
+
+          echo "Runtimes after download attempt:"
+          xcrun simctl list runtimes
+          if ! xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])'; then
+            echo "ERROR: No iOS 26+ Simulator runtime available after downloadPlatform." >&2
+            exit 2
+          fi
+
+      - name: Build FNGlassGallery (iOS 26 Simulator)
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ui-screenshots Docs/ui-redesign
+
+          RUNTIME=$(xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])' | head -1 \
+            | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+')
+          echo "Using runtime $RUNTIME"
+
+          UDID=$(xcrun simctl list devices available | awk -v rt="$RUNTIME" '
+            index($0, rt) {inrt=1; next}
+            /^--/ {inrt=0}
+            inrt && /iPhone 16 \(/ {
+              if (match($0, /\(([A-F0-9-]{36})\)/)) { print substr($0, RSTART+1, RLENGTH-2); exit }
+            }
+          ')
+          if [[ -z "${UDID:-}" ]]; then
+            UDID=$(xcrun simctl create "FN Glass CI iPhone 16" \
+              com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$RUNTIME")
+          fi
+          echo "UDID=$UDID"
+
+          xcodebuild \
+            -project FNGlassGallery.xcodeproj \
+            -scheme FNGlassGallery \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath build/DerivedData \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Capture screenshots (fail if not iOS 26)
+        run: |
+          set -euo pipefail
+          chmod +x Scripts/capture-gallery-screenshots.sh
+          # Contact sheet needs Pillow. macos runners use PEP 668 managed Python —
+          # use a local venv so install is reliable (no silent home.png duplicate).
+          python3 -m venv .fn-shot-venv
+          .fn-shot-venv/bin/pip install --disable-pip-version-check Pillow
+          .fn-shot-venv/bin/python -c "from PIL import Image; print('Pillow OK', Image.__version__)"
+          export PATH="${GITHUB_WORKSPACE}/.fn-shot-venv/bin:${PATH}"
+          # Overall hard-cap. Per-command poll/abandon timeouts live in the capture script.
+          # Keep this step YAML-safe (no undented heredoc / python -c block).
+          DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
+            perl -e 'alarm shift; exec @ARGV' 600 \
+            Scripts/capture-gallery-screenshots.sh
+
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fullynoded-glass-screenshots
+          path: |
+            artifacts/ui-screenshots/
+            Docs/ui-redesign/*.png
+            Docs/ui-redesign/capture-provenance.txt
+          if-no-files-found: error

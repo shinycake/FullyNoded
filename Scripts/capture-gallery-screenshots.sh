@@ -1,0 +1,392 @@
+#!/usr/bin/env bash
+# Build FNGlassGallery and capture Liquid Glass screenshots.
+# REQUIRES Xcode 26+ (Swift 6.2 glass symbols) AND an iOS 26+ Simulator runtime.
+# Material/capsule fallbacks must NOT be published as Liquid Glass.
+set -euo pipefail
+
+# Portable timeout (macOS GHA often lacks GNU timeout).
+# Thread timer + communicate — do NOT rely on wait(timeout) alone; after a
+# killed bootstatus, simctl install has wedged Python wait() until the 720s
+# outer alarm. A daemon thread SIGKILLs the process group on schedule.
+run_with_timeout() {
+  local secs="$1"; shift
+  # Prefer system Python — CI puts a venv python earlier on PATH for Pillow.
+  local py="/usr/bin/python3"
+  [[ -x "$py" ]] || py="$(command -v python3)"
+  "$py" - "$secs" "$@" <<'PY'
+import os, signal, subprocess, sys, threading, time
+
+secs = int(sys.argv[1])
+cmd = sys.argv[2:]
+proc = subprocess.Popen(cmd, start_new_session=True)
+timed_out = threading.Event()
+killed_at = {"t": 0.0}
+
+def nuke() -> None:
+    timed_out.set()
+    killed_at["t"] = time.monotonic()
+    print(f"WARN: timed out after {secs}s: {' '.join(cmd)}", file=sys.stderr, flush=True)
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        proc.kill()
+    except ProcessLookupError:
+        pass
+    subprocess.run(
+        ["pkill", "-9", "-f", r"simctl (bootstatus|install|launch|io|boot|uninstall|spawn)"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+timer = threading.Timer(secs, nuke)
+timer.daemon = True
+timer.start()
+try:
+    # Poll — never block forever in wait()/communicate() if killpg cannot
+    # reap a CoreSimulator-wedged client (that was hanging CI for ~10m).
+    while proc.poll() is None:
+        if timed_out.is_set() and (time.monotonic() - killed_at["t"]) > 8:
+            print(
+                "WARN: process still alive 8s after SIGKILL — abandoning wait",
+                file=sys.stderr,
+                flush=True,
+            )
+            sys.exit(124)
+        time.sleep(0.25)
+finally:
+    timer.cancel()
+
+if timed_out.is_set():
+    sys.exit(124)
+sys.exit(proc.returncode if proc.returncode is not None else 0)
+PY
+}
+
+sim_is_booted() {
+  local udid="$1"
+  xcrun simctl list devices booted 2>/dev/null | grep -q "$udid"
+}
+
+# True only if the guest can spawn a trivial process (Booted != ready).
+sim_is_ready() {
+  local udid="$1"
+  run_with_timeout 30 xcrun simctl spawn "$udid" /bin/echo FN_SIM_READY \
+    | grep -q FN_SIM_READY
+}
+
+boot_sim_clean() {
+  local udid="$1"
+  local status_secs="${2:-120}"
+  echo "==> Clean boot $udid"
+  xcrun simctl shutdown "$udid" 2>/dev/null || true
+  # Erase avoids half-booted CoreSimulator state that wedges simctl install.
+  xcrun simctl erase "$udid" 2>/dev/null || true
+  sleep 2
+  xcrun simctl boot "$udid" 2>/dev/null || true
+  if ! run_with_timeout "$status_secs" xcrun simctl bootstatus "$udid" -b; then
+    echo "WARN: bootstatus failed for $udid" >&2
+    return 1
+  fi
+  if ! sim_is_booted "$udid"; then
+    echo "WARN: $udid not in Booted list" >&2
+    return 1
+  fi
+  if ! sim_is_ready "$udid"; then
+    echo "WARN: $udid Booted but spawn not ready" >&2
+    return 1
+  fi
+  return 0
+}
+
+
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUT_DOCS="${OUT_DOCS:-$ROOT/Docs/ui-redesign}"
+OUT_ART="${OUT_ART:-$ROOT/artifacts/ui-screenshots}"
+DERIVED="${DERIVED:-$ROOT/build/DerivedData}"
+BUNDLE_ID="com.shinycake.FNGlassGallery"
+SCHEME="FNGlassGallery"
+PROJECT="$ROOT/FNGlassGallery.xcodeproj"
+
+mkdir -p "$OUT_DOCS" "$OUT_ART"
+
+echo "==> Locating Xcode with iOS 26 / Swift 6.2 glass support"
+select_xcode() {
+  # CI already selected Xcode — honor DEVELOPER_DIR / xcode-select when major >= 26.
+  if [[ -n "${DEVELOPER_DIR:-}" ]] && [[ -d "${DEVELOPER_DIR}" ]]; then
+    local maj
+    maj="$(xcodebuild -version 2>/dev/null | awk '/Xcode/{print $2}' | cut -d. -f1 || true)"
+    if [[ -n "$maj" ]] && (( maj >= 26 )); then
+      echo "Using preselected DEVELOPER_DIR=$DEVELOPER_DIR"
+      xcodebuild -version
+      return 0
+    fi
+  fi
+
+  local candidates=()
+  local found
+  while IFS= read -r found; do
+    candidates+=("$found")
+  done < <(ls -d /Applications/Xcode*.app 2>/dev/null || true)
+
+  local best=""
+  local best_score=-1
+  for app in "${candidates[@]}"; do
+    [[ -d "$app" ]] || continue
+    local ver major score=0
+    ver="$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>/dev/null | awk '/Xcode/{print $2}' || true)"
+    [[ -n "$ver" ]] || continue
+    major="${ver%%.*}"
+    score=$major
+    if [[ "$app" == *beta* ]] || [[ "$app" == *Beta* ]]; then
+      score=$((score + 1))
+    fi
+    if (( score > best_score )); then
+      best="$app"
+      best_score=$score
+    fi
+  done
+
+  if [[ -z "$best" ]]; then
+    echo "ERROR: No Xcode installation found under /Applications." >&2
+    exit 1
+  fi
+  export DEVELOPER_DIR="$best/Contents/Developer"
+  sudo xcode-select -s "$DEVELOPER_DIR" 2>/dev/null || true
+  echo "Using Xcode: $best"
+  xcodebuild -version
+}
+
+select_xcode
+
+XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/{print $2}' | cut -d. -f1)"
+XCODE_VERSION="$(xcodebuild -version | tr '\n' ' ')"
+if [[ -z "$XCODE_MAJOR" ]] || (( XCODE_MAJOR < 26 )); then
+  cat >&2 <<EOF
+ERROR: Xcode ${XCODE_MAJOR:-unknown} is too old for Liquid Glass compile-time APIs.
+
+FNGlass gates .glassEffect / .buttonStyle(.glass) behind \`#if compiler(>=6.2)\`
+(Xcode 26+). Building with older Xcode silently compiles material fallbacks only.
+
+Install Xcode 26+ (or the current beta that ships the iOS 26 SDK) and re-run.
+EOF
+  exit 2
+fi
+
+echo "==> Available runtimes:"
+xcrun simctl list runtimes || true
+
+echo "==> Selecting iOS 26+ simulator runtime"
+IOS26_RUNTIME=""
+IOS26_LABEL=""
+while IFS= read -r line; do
+  if [[ "$line" =~ iOS[[:space:]]+(2[6-9]|[3-9][0-9])(\.[0-9]+)* ]]; then
+    rid="$(echo "$line" | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+' | head -1 || true)"
+    if [[ -n "$rid" ]]; then
+      IOS26_RUNTIME="$rid"
+      IOS26_LABEL="$line"
+      echo "Found runtime: $line"
+      break
+    fi
+  fi
+done < <(xcrun simctl list runtimes)
+
+if [[ -z "$IOS26_RUNTIME" ]]; then
+  cat >&2 <<'EOF'
+ERROR: No iOS 26+ Simulator runtime is installed.
+
+Liquid Glass only renders on iOS 26+. Capturing on iOS 18 would silently produce
+opaque material/capsule fallbacks and must not be published as glass screenshots.
+
+Fix:
+  1. Install Xcode 26+ (or current beta with iOS 26 SDK)
+  2. Xcode → Settings → Platforms → download iOS 26.x Simulator
+  3. Re-run this script / workflow
+EOF
+  exit 2
+fi
+
+# Prefer iPhone 16 on that runtime; create one if needed.
+DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-16"
+DEVICE_NAME="FN Glass iPhone 16"
+UDID="$(xcrun simctl list devices available | awk -v rt="$IOS26_RUNTIME" '
+  index($0, rt) {inrt=1; next}
+  /^--/ {inrt=0}
+  inrt && /iPhone 16 \(/ {
+    if (match($0, /\(([A-F0-9-]{36})\)/)) { print substr($0, RSTART+1, RLENGTH-2); exit }
+  }
+')"
+
+if [[ -z "${UDID:-}" ]]; then
+  echo "Creating simulator '$DEVICE_NAME' on $IOS26_RUNTIME"
+  UDID="$(xcrun simctl create "$DEVICE_NAME" "$DEVICE_TYPE" "$IOS26_RUNTIME" 2>/dev/null || true)"
+fi
+
+if [[ -z "${UDID:-}" ]]; then
+  UDID="$(xcrun simctl list devices available | awk -v rt="$IOS26_RUNTIME" '
+    index($0, rt) {inrt=1; next}
+    /^--/ {inrt=0}
+    inrt && /iPhone/ {
+      if (match($0, /\(([A-F0-9-]{36})\)/)) { print substr($0, RSTART+1, RLENGTH-2); exit }
+    }
+  ')"
+fi
+
+if [[ -z "${UDID:-}" ]]; then
+  echo "ERROR: Could not find or create an iPhone simulator for $IOS26_RUNTIME" >&2
+  xcrun simctl list devices available >&2 || true
+  exit 2
+fi
+
+DESTINATION="platform=iOS Simulator,id=$UDID"
+echo "Simulator UDID=$UDID"
+echo "Runtime: $IOS26_LABEL"
+echo "Destination: $DESTINATION"
+
+echo "==> Booting simulator"
+# On GHA, opening Simulator.app has hung boots — prefer headless simctl only.
+if [[ -z "${GITHUB_ACTIONS:-}" ]]; then
+  open -g -a Simulator 2>/dev/null || true
+  sleep 2
+fi
+
+if ! boot_sim_clean "$UDID" 120; then
+  echo "WARN: first clean boot failed — recreate device and retry" >&2
+  xcrun simctl shutdown "$UDID" 2>/dev/null || true
+  xcrun simctl delete "$UDID" 2>/dev/null || true
+  UDID="$(xcrun simctl create "FN Glass iPhone 16" "$DEVICE_TYPE" "$IOS26_RUNTIME")"
+  echo "Recreated simulator UDID=$UDID"
+  DESTINATION="platform=iOS Simulator,id=$UDID"
+  if ! boot_sim_clean "$UDID" 180; then
+    echo "ERROR: simulator never became ready for install" >&2
+    xcrun simctl list devices "$IOS26_RUNTIME" >&2 || true
+    exit 1
+  fi
+fi
+sleep 2
+
+# Reuse existing build if APP already present under DERIVED (CI builds first)
+echo "==> Looking for FNGlassGallery.app under $DERIVED"
+APP="$(run_with_timeout 30 find "$DERIVED/Build/Products" -name 'FNGlassGallery.app' -type d 2>/dev/null | head -1 || true)"
+if [[ -z "$APP" ]]; then
+  echo "==> Building $SCHEME for iOS 26 simulator"
+  xcodebuild \
+    -project "$PROJECT" \
+    -scheme "$SCHEME" \
+    -destination "$DESTINATION" \
+    -derivedDataPath "$DERIVED" \
+    -configuration Debug \
+    build \
+    CODE_SIGNING_ALLOWED=NO \
+    CODE_SIGN_IDENTITY="" \
+    CODE_SIGNING_REQUIRED=NO
+  APP="$(find "$DERIVED/Build/Products" -name 'FNGlassGallery.app' -type d | head -1)"
+fi
+
+if [[ -z "$APP" ]]; then
+  echo "ERROR: FNGlassGallery.app not found under $DERIVED" >&2
+  find "$DERIVED" -name '*.app' 2>/dev/null | head -20 >&2 || true
+  exit 1
+fi
+echo "App: $APP"
+
+echo "==> Installing $BUNDLE_ID"
+run_with_timeout 30 xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+install_ok=0
+for attempt in 1 2 3; do
+  echo "Install attempt $attempt/3"
+  if run_with_timeout 45 xcrun simctl install "$UDID" "$APP"; then
+    install_ok=1
+    break
+  fi
+  echo "WARN: simctl install failed/timed out (attempt $attempt) — erase + clean boot + retry" >&2
+  if ! boot_sim_clean "$UDID" 120; then
+    echo "WARN: clean boot after install failure also failed" >&2
+  fi
+done
+if [[ "$install_ok" -ne 1 ]]; then
+  echo "ERROR: simctl install failed after retries" >&2
+  exit 1
+fi
+
+declare -a SCREENS=(home activity send receive settings)
+
+capture_screen() {
+  local screen="$1"
+  echo "==> Capturing $screen → ${screen}.png"
+  xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+  if ! run_with_timeout 45 xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen"; then
+    echo "WARN: launch failed for $screen — rebooting sim and retrying" >&2
+    xcrun simctl boot "$UDID" 2>/dev/null || true
+    run_with_timeout 60 xcrun simctl bootstatus "$UDID" -b || true
+    run_with_timeout 45 xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen" || true
+  fi
+  sleep 2.5
+  run_with_timeout 45 xcrun simctl io "$UDID" screenshot "$OUT_DOCS/${screen}.png"
+  cp "$OUT_DOCS/${screen}.png" "$OUT_ART/${screen}.png"
+  ls -la "$OUT_DOCS/${screen}.png"
+}
+
+for screen in "${SCREENS[@]}"; do
+  capture_screen "$screen"
+done
+
+echo "==> Building contact sheet from captures"
+python3 - <<'PY' "$OUT_DOCS" "$OUT_ART"
+import sys
+from pathlib import Path
+
+docs, art = Path(sys.argv[1]), Path(sys.argv[2])
+names = ["home", "activity", "send", "receive", "settings"]
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    src = docs / "home.png"
+    for dest in (docs / "contact-sheet.png", art / "contact-sheet.png", docs / "sheet.png", art / "sheet.png"):
+        dest.write_bytes(src.read_bytes())
+    print("WARN: Pillow missing — contact sheet is a home duplicate", file=sys.stderr)
+    raise SystemExit(0)
+
+imgs = [Image.open(docs / f"{n}.png").convert("RGB") for n in names]
+w, h = imgs[0].size
+pad, label_h, gap = 24, 36, 16
+cols, rows = 3, 2
+sheet_w = pad * 2 + cols * w + (cols - 1) * gap
+sheet_h = pad * 2 + rows * (h + label_h) + (rows - 1) * gap + 48
+sheet = Image.new("RGB", (sheet_w, sheet_h), (18, 18, 20))
+draw = ImageDraw.Draw(sheet)
+try:
+    font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 22)
+    title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+except Exception:
+    font = ImageFont.load_default()
+    title_font = font
+draw.text((pad, 14), "Fully Noded — Liquid Glass (iOS 26 gallery)", fill=(240, 240, 245), font=title_font)
+
+for i, (name, im) in enumerate(zip(names, imgs)):
+    r, c = divmod(i, cols)
+    x = pad + c * (w + gap)
+    y = 48 + pad + r * (h + label_h + gap)
+    draw.text((x, y), name.title(), fill=(200, 200, 210), font=font)
+    sheet.paste(im, (x, y + label_h))
+
+for dest in (docs / "contact-sheet.png", art / "contact-sheet.png", docs / "sheet.png", art / "sheet.png"):
+    sheet.save(dest, "PNG")
+print(f"Wrote contact sheet {sheet.size[0]}x{sheet.size[1]}")
+PY
+
+{
+  echo "xcode=$XCODE_VERSION"
+  echo "runtime=$IOS26_RUNTIME"
+  echo "runtime_label=$IOS26_LABEL"
+  echo "udid=$UDID"
+  echo "destination=$DESTINATION"
+} | tee "$OUT_ART/capture-provenance.txt"
+cp "$OUT_ART/capture-provenance.txt" "$OUT_DOCS/capture-provenance.txt"
+
+echo "==> Screenshots written"
+ls -la "$OUT_DOCS"/*.png
+echo "Xcode major=$XCODE_MAJOR · runtime=$IOS26_RUNTIME"

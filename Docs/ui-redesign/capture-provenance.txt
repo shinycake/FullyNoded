@@ -1,0 +1,5 @@
+xcode=Xcode 26.0.1 Build version 17A400 
+runtime=com.apple.CoreSimulator.SimRuntime.iOS-26-0
+runtime_label=iOS 26.0 (26.0.1 - 23A8464) - com.apple.CoreSimulator.SimRuntime.iOS-26-0
+udid=871D65A9-19EF-455C-89BA-F1356F584AAA
+destination=platform=iOS Simulator,id=871D65A9-19EF-455C-89BA-F1356F584AAA

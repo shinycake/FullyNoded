@@ -17,10 +17,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private var blacked = UIView()
     
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+        guard let windowScene = (scene as? UIWindowScene) else { return }
+
+        // Glass SwiftUI shell is OPT-IN only (FNLaunchFlags.useGlassShellByDefault = false).
+        // Classic Main storyboard remains the default production root.
+        // Enable in Settings → Liquid Glass UI (opt-in), then relaunch; or open FNGlassGallery.
+        if FNLaunchFlags.useGlassShell {
+            let window = UIWindow(windowScene: windowScene)
+            window.rootViewController = FNGlassHostingController()
+            window.tintColor = .systemOrange
+            self.window = window
+            window.makeKeyAndVisible()
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -213,65 +221,77 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
         
+    /// Deep-link / file-open flows post to classic tab listeners. If the glass shell is
+    /// the root, restore the Main storyboard tab bar for this session so presenters are
+    /// not silent no-ops under `UIHostingController`.
+    @discardableResult
+    private func ensureClassicTabBarRoot() -> UITabBarController? {
+        if let tab = window?.rootViewController as? UITabBarController {
+            return tab
+        }
+        guard let window else { return nil }
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        guard let tab = storyboard.instantiateInitialViewController() as? UITabBarController else {
+            return nil
+        }
+        window.rootViewController = tab
+        window.tintColor = .systemOrange
+        window.makeKeyAndVisible()
+        return tab
+    }
+
+    private func presentFromTop(viewController: UIViewController, fullScreen: Bool = true) {
+        guard let root = window?.rootViewController else { return }
+        var current = root
+        while let presented = current.presentedViewController {
+            current = presented
+        }
+        if fullScreen {
+            viewController.modalPresentationStyle = .fullScreen
+        }
+        current.present(viewController, animated: true)
+    }
+
     private func presentSigner(psbt: String) {
-        guard let tabBarController = self.window!.rootViewController as? UITabBarController else { return }
-        
+        guard let tabBarController = ensureClassicTabBarRoot() else { return }
         tabBarController.selectedIndex = 1
-        
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .signPsbt, object: nil, userInfo: ["psbt":psbt])
+            NotificationCenter.default.post(name: .signPsbt, object: nil, userInfo: ["psbt": psbt])
         }
     }
-    
+
     private func presentBroadcaster(txn: String) {
-       guard let tabBarController = self.window!.rootViewController as? UITabBarController else { return }
-        
+        guard let tabBarController = ensureClassicTabBarRoot() else { return }
         tabBarController.selectedIndex = 1
-        
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .broadcastTxn, object: nil, userInfo: ["txn":txn])
+            NotificationCenter.default.post(name: .broadcastTxn, object: nil, userInfo: ["txn": txn])
         }
     }
-    
+
     private func presentMultisigCreator(cosigner: Descriptor) {
         let storyBoard = UIStoryboard(name: "Main", bundle: nil)
-        
-        guard let multisigCreator = storyBoard.instantiateViewController(identifier: "MultisigCreator") as? CreateMultisigViewController,
-            let window = self.window,
-            let rootViewController = window.rootViewController else {
+        guard let multisigCreator = storyBoard.instantiateViewController(identifier: "MultisigCreator") as? CreateMultisigViewController else {
             return
         }
-        
         multisigCreator.cosigner = cosigner
-        
-        var currentController = rootViewController
-        
-        while let presentedController = currentController.presentedViewController {
-            currentController = presentedController
-        }
-        
-        multisigCreator.modalPresentationStyle = .fullScreen
-        currentController.present(multisigCreator, animated: true, completion: nil)
+        // Works for classic tab root or glass hosting root via top-most presenter.
+        presentFromTop(viewController: multisigCreator, fullScreen: true)
     }
-    
-    private func presentWalletCreator(coldCard: [String:Any]) {
-        guard let tabBarController = self.window!.rootViewController as? UITabBarController else { return }
-        
+
+    private func presentWalletCreator(coldCard: [String: Any]) {
+        guard let tabBarController = ensureClassicTabBarRoot() else { return }
         tabBarController.selectedIndex = 1
-        
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .addColdCard, object: nil, userInfo: coldCard)
         }
     }
-    
-    private func presentWalletImporter(accountMap: [String:Any]) {
-        guard let tabBarController = self.window!.rootViewController as? UITabBarController else { return }
-        
+
+    private func presentWalletImporter(accountMap: [String: Any]) {
+        guard let tabBarController = ensureClassicTabBarRoot() else { return }
         tabBarController.selectedIndex = 1
-        
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .importWallet, object: nil, userInfo: accountMap)
         }
     }
-    
+
 }

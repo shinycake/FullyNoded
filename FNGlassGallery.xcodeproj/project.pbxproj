@@ -1,0 +1,282 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2EFDA6E053B6B0FE404DF46E /* FNGlassGalleryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48975746798A76997A67AB00 /* FNGlassGalleryApp.swift */; };
+		EC835C077179A57C8F140232 /* FNTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781C5B708ED21BBCB168CE2E /* FNTheme.swift */; };
+		BC764B9384F090CF93C8D0A1 /* FNGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6C52570F2BCA42FAD5113D /* FNGlass.swift */; };
+		1B6F72CBD0D3D7B1F2180BB5 /* FNDemoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C6783957D0319D9A900B46 /* FNDemoModels.swift */; };
+		A80A9711BC3B441208706D8E /* FNComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319513F866FA153146AA054F /* FNComponents.swift */; };
+		53716821947F0B175FA69CAA /* FNHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA202615C069F64BDA5CAF69 /* FNHomeView.swift */; };
+		AFCF8E635F4113C3D10D7B57 /* FNActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCCE67CA6A2974E28ECCA3B /* FNActivityView.swift */; };
+		66867C7DF5BF381941F2207C /* FNSendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1704624BC99D1495BD5325 /* FNSendView.swift */; };
+		0B7EE38163BEC96E38BF2CA8 /* FNReceiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45DF561636F6EA48CAB69938 /* FNReceiveView.swift */; };
+		CAFF2FF568086D91AB2341DC /* FNSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFCD94518F785F5D70C7A2 /* FNSettingsView.swift */; };
+		CE43A52514A85076C68A9E55 /* FNGlassRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F45E17DE1A6C38B2B589EEA4 /* FNGlassRootView.swift */; };
+		A9E742C684B184574131A659 /* FNUIGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8BEE28EC9A88E6BB9A2CA7 /* FNUIGalleryView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		48975746798A76997A67AB00 /* FNGlassGalleryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FNGlassGalleryApp.swift; sourceTree = "<group>"; };
+		781C5B708ED21BBCB168CE2E /* FNTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem/FNTheme.swift; sourceTree = "<group>"; };
+		0F6C52570F2BCA42FAD5113D /* FNGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem/FNGlass.swift; sourceTree = "<group>"; };
+		A8C6783957D0319D9A900B46 /* FNDemoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/FNDemoModels.swift; sourceTree = "<group>"; };
+		319513F866FA153146AA054F /* FNComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/FNComponents.swift; sourceTree = "<group>"; };
+		BA202615C069F64BDA5CAF69 /* FNHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNHomeView.swift; sourceTree = "<group>"; };
+		ABCCE67CA6A2974E28ECCA3B /* FNActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNActivityView.swift; sourceTree = "<group>"; };
+		BC1704624BC99D1495BD5325 /* FNSendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNSendView.swift; sourceTree = "<group>"; };
+		45DF561636F6EA48CAB69938 /* FNReceiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNReceiveView.swift; sourceTree = "<group>"; };
+		A9AFCD94518F785F5D70C7A2 /* FNSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNSettingsView.swift; sourceTree = "<group>"; };
+		F45E17DE1A6C38B2B589EEA4 /* FNGlassRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell/FNGlassRootView.swift; sourceTree = "<group>"; };
+		6E8BEE28EC9A88E6BB9A2CA7 /* FNUIGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell/FNUIGalleryView.swift; sourceTree = "<group>"; };
+		2544E5B1E7659A7BA6F06444 /* FNGlassGallery.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FNGlassGallery.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC6E896E9DD05964D7E47410 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		56D9DEB7209CC2B39E593F03 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		88932FD6DD0EDC80FBF1C921 = {
+			isa = PBXGroup;
+			children = (
+				D5FAEADE4BDCDD1D01E15931 /* FNGlassGallery */,
+				42D38D034D2D22CDFC071801 /* SharedUI */,
+				D71BD8A0B6A6AA54EDBA6454 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D5FAEADE4BDCDD1D01E15931 /* FNGlassGallery */ = {
+			isa = PBXGroup;
+			children = (
+				48975746798A76997A67AB00 /* FNGlassGalleryApp.swift */,
+				AC6E896E9DD05964D7E47410 /* Info.plist */,
+			);
+			path = FNGlassGallery;
+			sourceTree = "<group>";
+		};
+		42D38D034D2D22CDFC071801 /* SharedUI */ = {
+			isa = PBXGroup;
+			children = (
+				781C5B708ED21BBCB168CE2E /* FNTheme.swift */,
+				0F6C52570F2BCA42FAD5113D /* FNGlass.swift */,
+				A8C6783957D0319D9A900B46 /* FNDemoModels.swift */,
+				319513F866FA153146AA054F /* FNComponents.swift */,
+				BA202615C069F64BDA5CAF69 /* FNHomeView.swift */,
+				ABCCE67CA6A2974E28ECCA3B /* FNActivityView.swift */,
+				BC1704624BC99D1495BD5325 /* FNSendView.swift */,
+				45DF561636F6EA48CAB69938 /* FNReceiveView.swift */,
+				A9AFCD94518F785F5D70C7A2 /* FNSettingsView.swift */,
+				F45E17DE1A6C38B2B589EEA4 /* FNGlassRootView.swift */,
+				6E8BEE28EC9A88E6BB9A2CA7 /* FNUIGalleryView.swift */,
+			);
+			name = SharedUI;
+			path = FullyNoded/UI;
+			sourceTree = "<group>";
+		};
+		D71BD8A0B6A6AA54EDBA6454 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2544E5B1E7659A7BA6F06444 /* FNGlassGallery.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		730950AD798A77AD508AA9E2 /* FNGlassGallery */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 55C9043A875577041B72C464 /* Build configuration list for PBXNativeTarget "FNGlassGallery" */;
+			buildPhases = (
+				678DFDA984997D39267CB7FC /* Sources */,
+				56D9DEB7209CC2B39E593F03 /* Frameworks */,
+				85132AF6B5F14319CB4C91EC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FNGlassGallery;
+			productName = FNGlassGallery;
+			productReference = 2544E5B1E7659A7BA6F06444 /* FNGlassGallery.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1781F676DEDF5767F3243DB0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = F75AE1A8C6DE8A79FE559AAF /* Build configuration list for PBXProject "FNGlassGallery" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 88932FD6DD0EDC80FBF1C921;
+			productRefGroup = D71BD8A0B6A6AA54EDBA6454 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				730950AD798A77AD508AA9E2 /* FNGlassGallery */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		85132AF6B5F14319CB4C91EC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		678DFDA984997D39267CB7FC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2EFDA6E053B6B0FE404DF46E /* FNGlassGalleryApp.swift in Sources */,
+				EC835C077179A57C8F140232 /* FNTheme.swift in Sources */,
+				BC764B9384F090CF93C8D0A1 /* FNGlass.swift in Sources */,
+				1B6F72CBD0D3D7B1F2180BB5 /* FNDemoModels.swift in Sources */,
+				A80A9711BC3B441208706D8E /* FNComponents.swift in Sources */,
+				53716821947F0B175FA69CAA /* FNHomeView.swift in Sources */,
+				AFCF8E635F4113C3D10D7B57 /* FNActivityView.swift in Sources */,
+				66867C7DF5BF381941F2207C /* FNSendView.swift in Sources */,
+				0B7EE38163BEC96E38BF2CA8 /* FNReceiveView.swift in Sources */,
+				CAFF2FF568086D91AB2341DC /* FNSettingsView.swift in Sources */,
+				CE43A52514A85076C68A9E55 /* FNGlassRootView.swift in Sources */,
+				A9E742C684B184574131A659 /* FNUIGalleryView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		531AD298E6732C1F29542A43 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B9FE509C433568776D5E7E4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		C38CECC73434CFE67D0FF37A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FNGlassGallery/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shinycake.FNGlassGallery;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGNING_ALLOWED = NO;
+			};
+			name = Debug;
+		};
+		A496A180BB6C6B43E40A59A0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FNGlassGallery/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shinycake.FNGlassGallery;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGNING_ALLOWED = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F75AE1A8C6DE8A79FE559AAF /* Build configuration list for PBXProject "FNGlassGallery" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				531AD298E6732C1F29542A43 /* Debug */,
+				B9FE509C433568776D5E7E4C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		55C9043A875577041B72C464 /* Build configuration list for PBXNativeTarget "FNGlassGallery" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C38CECC73434CFE67D0FF37A /* Debug */,
+				A496A180BB6C6B43E40A59A0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1781F676DEDF5767F3243DB0 /* Project object */;
+}

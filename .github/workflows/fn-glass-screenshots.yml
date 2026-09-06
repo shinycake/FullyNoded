@@ -1,8 +1,14 @@
 name: FN Glass Screenshots
 
 # Single trigger to avoid double-runs on the same PR push.
+# Skip Docs/artifact-only pushes — those re-uploads of PNGs must not
+# re-run the flaky simulator capture (already proven on code commits).
 on:
   pull_request:
+    paths-ignore:
+      - 'Docs/**'
+      - 'artifacts/**'
+      - '**.md'
   workflow_dispatch:
 
 jobs:

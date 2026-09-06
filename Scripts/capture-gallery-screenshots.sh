@@ -5,39 +5,42 @@
 set -euo pipefail
 
 # Portable timeout (macOS GHA often lacks GNU timeout).
-# Kill the whole process group — bare kill -9 on xcrun can leave simctl
-# stuck in D-state / reparented, so `wait` never returns (hit the 720s alarm).
+# Use Python wait(timeout)+killpg — bash `wait` after kill -9 on xcrun has
+# hung for minutes on GHA when simctl install stalls (hit the 720s alarm).
 run_with_timeout() {
   local secs="$1"; shift
-  local pid watcher rc pgid
-  # New process group so negative-PID kill covers xcrun + simctl children.
-  set -m
-  "$@" &
-  pid=$!
-  pgid="$pid"
-  (
-    sleep "$secs"
-    if kill -0 "$pid" 2>/dev/null; then
-      echo "WARN: timed out after ${secs}s: $*" >&2
-      kill -9 -"$pgid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
-      pkill -9 -P "$pid" 2>/dev/null || true
-      # Last resort: any lingering simctl for this command line
-      pkill -9 -f "simctl (bootstatus|install|launch|io)" 2>/dev/null || true
-    fi
-  ) &
-  watcher=$!
-  set +m
-  set +e
-  wait "$pid"
-  rc=$?
-  set -e
-  kill "$watcher" 2>/dev/null || true
-  wait "$watcher" 2>/dev/null || true
-  # 137/143 = killed by signal; treat as timeout failure
-  if [[ "$rc" -eq 137 || "$rc" -eq 143 || "$rc" -eq 124 ]]; then
-    return 124
-  fi
-  return "$rc"
+  python3 - "$secs" "$@" <<'PY'
+import os, signal, subprocess, sys
+
+secs = int(sys.argv[1])
+cmd = sys.argv[2:]
+proc = subprocess.Popen(cmd, start_new_session=True)
+try:
+    rc = proc.wait(timeout=secs)
+except subprocess.TimeoutExpired:
+    print(f"WARN: timed out after {secs}s: {' '.join(cmd)}", file=sys.stderr, flush=True)
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        proc.kill()
+    except ProcessLookupError:
+        pass
+    # Sweep leftover simctl clients that CoreSimulator may have reparented.
+    subprocess.run(
+        ["pkill", "-9", "-f", r"simctl (bootstatus|install|launch|io|boot)"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    sys.exit(124)
+sys.exit(rc if rc is not None else 0)
+PY
 }
 
 sim_is_booted() {

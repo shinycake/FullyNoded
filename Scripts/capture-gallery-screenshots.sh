@@ -6,9 +6,31 @@ set -euo pipefail
 
 # Portable timeout (macOS GHA often lacks GNU timeout).
 run_with_timeout() {
+  # kill -9 watchdog — simctl often ignores SIGALRM from perl alarm/exec.
   local secs="$1"; shift
-  perl -e "alarm shift; exec @ARGV" "$secs" "$@"
+  "$@" &
+  local pid=$!
+  (
+    sleep "$secs"
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "WARN: timed out after ${secs}s: $*" >&2
+      kill -9 "$pid" 2>/dev/null || true
+      # Also kill orphaned simctl children sharing the process group when possible
+      pkill -9 -P "$pid" 2>/dev/null || true
+    fi
+  ) &
+  local watcher=$!
+  wait "$pid"
+  local rc=$?
+  kill "$watcher" 2>/dev/null || true
+  wait "$watcher" 2>/dev/null || true
+  # 137/143 = killed by signal; treat as timeout failure
+  if [[ "$rc" -eq 137 || "$rc" -eq 143 ]]; then
+    return 124
+  fi
+  return "$rc"
 }
+
 
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -155,13 +177,16 @@ echo "Runtime: $IOS26_LABEL"
 echo "Destination: $DESTINATION"
 
 echo "==> Booting simulator"
-# Never open Simulator.app under GHA — it can hang headless forever.
+# Warm CoreSimulator without blocking on Simulator.app (open -g returns immediately).
+open -g -a Simulator 2>/dev/null || true
+sleep 5
+xcrun simctl shutdown "$UDID" 2>/dev/null || true
 xcrun simctl boot "$UDID" 2>/dev/null || true
-# bootstatus itself can hang; bound it. Avoid polling `simctl list` (also can stall).
-run_with_timeout 60 xcrun simctl bootstatus "$UDID" -b || {
+run_with_timeout 90 xcrun simctl bootstatus "$UDID" -b || {
   echo "WARN: bootstatus timed out — continuing" >&2
 }
-sleep 1
+sleep 2
+
 
 # Reuse existing build if APP already present under DERIVED (CI builds first)
 echo "==> Looking for FNGlassGallery.app under $DERIVED"
@@ -198,9 +223,14 @@ capture_screen() {
   local screen="$1"
   echo "==> Capturing $screen → ${screen}.png"
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
-  run_with_timeout 60 xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen"
-  sleep 3.0
-  run_with_timeout 60 xcrun simctl io "$UDID" screenshot "$OUT_DOCS/${screen}.png"
+  if ! run_with_timeout 45 xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen"; then
+    echo "WARN: launch failed for $screen — rebooting sim and retrying" >&2
+    xcrun simctl boot "$UDID" 2>/dev/null || true
+    run_with_timeout 60 xcrun simctl bootstatus "$UDID" -b || true
+    run_with_timeout 45 xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen" || true
+  fi
+  sleep 2.5
+  run_with_timeout 45 xcrun simctl io "$UDID" screenshot "$OUT_DOCS/${screen}.png"
   cp "$OUT_DOCS/${screen}.png" "$OUT_ART/${screen}.png"
   ls -la "$OUT_DOCS/${screen}.png"
 }

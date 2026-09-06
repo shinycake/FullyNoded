@@ -9,7 +9,8 @@ jobs:
   gallery-screenshots:
     name: Build gallery + capture iOS 26 Liquid Glass screenshots
     runs-on: macos-15
-    timeout-minutes: 60
+    # Prefer macos-15; if runners lack Xcode 26, switch to macos-26.
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,10 +51,20 @@ jobs:
             exit 2
           fi
 
-          echo "Runtimes:"
+          # GHA often ships Xcode 26 without the iOS 26 runtime preinstalled.
+          xcrun simctl list >/dev/null 2>&1 || true
+          echo "Runtimes before download:"
+          xcrun simctl list runtimes || true
+          if ! xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])'; then
+            echo "No iOS 26+ runtime yet — downloading platform (may take several minutes)…"
+            xcodebuild -downloadPlatform iOS -architectureVariant universal || \
+              xcodebuild -downloadPlatform iOS || true
+          fi
+
+          echo "Runtimes after download attempt:"
           xcrun simctl list runtimes
           if ! xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])'; then
-            echo "ERROR: No iOS 26+ Simulator runtime installed on this runner." >&2
+            echo "ERROR: No iOS 26+ Simulator runtime available after downloadPlatform." >&2
             exit 2
           fi
 
@@ -92,7 +103,6 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x Scripts/capture-gallery-screenshots.sh
-          # Prefer pip Pillow for contact sheet on the runner
           python3 -m pip install --user Pillow >/dev/null 2>&1 || true
           Scripts/capture-gallery-screenshots.sh
 

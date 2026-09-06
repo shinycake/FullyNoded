@@ -98,67 +98,83 @@ extension View {
 }
 
 /// Padded glass card for balance / node / QR / fee heroes.
+///
+/// - Important: On iOS 26, stacking several `.glassEffect` plates in one
+///   `ScrollView` (Settings) still collapses later cards even when glass is only
+///   a background. Pass `useGlass: false` for dense multi-row list groups.
 struct FNGlassCard<Content: View>: View {
     var padding: CGFloat
     var cornerRadius: CGFloat
     var interactive: Bool
+    /// When false, uses material + tint only (no Liquid Glass). Safer for lists.
+    var useGlass: Bool
     @ViewBuilder var content: () -> Content
 
     init(
         padding: CGFloat = 20,
         cornerRadius: CGFloat = FNTheme.radiusL,
         interactive: Bool = false,
+        useGlass: Bool = true,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.padding = padding
         self.cornerRadius = cornerRadius
         self.interactive = interactive
+        self.useGlass = useGlass
         self.content = content
     }
 
     var body: some View {
-        // Glass must be a BACKGROUND plate. Applying `.glassEffect` directly to a
-        // multi-row VStack collapses/overlays children on iOS 26 (Settings smash).
+        // Never apply `.glassEffect` directly to multi-row content — it overlays
+        // children on iOS 26. Prefer material plates for dense Settings groups.
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                ZStack {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.orange.opacity(0.18),
-                                    Color.blue.opacity(0.12),
-                                    Color.cyan.opacity(0.08)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    glassPlate
-                }
-            }
+            .background { plate }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
     @ViewBuilder
-    private var glassPlate: some View {
+    private var plate: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        if #available(iOS 26.0, *) {
-            #if compiler(>=6.2)
-            if interactive {
-                shape.glassEffect(.regular.interactive(), in: shape)
+        let tint = LinearGradient(
+            colors: [
+                Color.orange.opacity(0.18),
+                Color.blue.opacity(0.12),
+                Color.cyan.opacity(0.08)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+
+        if useGlass {
+            if #available(iOS 26.0, *) {
+                #if compiler(>=6.2)
+                ZStack {
+                    shape.fill(tint)
+                    if interactive {
+                        shape.glassEffect(.regular.interactive(), in: shape)
+                    } else {
+                        shape.glassEffect(.regular, in: shape)
+                    }
+                }
+                #else
+                materialPlate(shape: shape, tint: tint)
+                #endif
             } else {
-                shape.glassEffect(.regular, in: shape)
+                materialPlate(shape: shape, tint: tint)
             }
-            #else
-            shape.fill(.regularMaterial)
-            #endif
         } else {
-            shape.fill(.regularMaterial)
-                .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+            materialPlate(shape: shape, tint: tint)
         }
+    }
+
+    private func materialPlate(shape: RoundedRectangle, tint: LinearGradient) -> some View {
+        ZStack {
+            shape.fill(.regularMaterial)
+            shape.fill(tint)
+        }
+        .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
     }
 }
 

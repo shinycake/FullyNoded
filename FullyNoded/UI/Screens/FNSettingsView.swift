@@ -6,10 +6,11 @@ struct FNSettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                // No shared GlassEffectContainer — a page-level container morphs
-                // neighboring glass cards and was smashing SECURITY/WALLET/ABOUT text.
-                VStack(alignment: .leading, spacing: 24) {
-                    FNGlassCard(interactive: true) {
+                // Dense Settings groups use material plates (`useGlass: false`).
+                // Multiple `.glassEffect` cards in one ScrollView still smash later
+                // sections on iOS 26 even when glass is only a background plate.
+                VStack(alignment: .leading, spacing: 28) {
+                    FNGlassCard(interactive: true, useGlass: false) {
                         VStack(alignment: .leading, spacing: 12) {
                             Toggle(isOn: Binding(
                                 get: { model.useGlassShell },
@@ -31,68 +32,69 @@ struct FNSettingsView: View {
 
                     FNDemoBanner()
 
-                    sectionHeader("Node")
-                    FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            LabeledContent {
-                                Text(model.node.isConnected ? "Connected" : "Offline")
-                                    .foregroundStyle(model.node.isConnected ? Color.green : Color.secondary)
-                            } label: {
-                                Label(model.node.name, systemImage: "server.rack")
-                            }
-                            Divider().opacity(0.35)
-                            LabeledContent("Host", value: model.node.hostPreview)
-                            Divider().opacity(0.35)
-                            LabeledContent("Network", value: model.node.network.capitalized)
-                            Divider().opacity(0.35)
-                            LabeledContent("Peers", value: "\(model.node.peers)")
-                            Divider().opacity(0.35)
-                            LabeledContent("Version", value: model.node.version)
+                    settingsGroup("Node") {
+                        labeledRow {
+                            Label(model.node.name, systemImage: "server.rack")
+                        } value: {
+                            Text(model.node.isConnected ? "Connected" : "Offline")
+                                .foregroundStyle(model.node.isConnected ? Color.green : Color.secondary)
                         }
+                        groupDivider()
+                        labeledRow("Host", value: model.node.hostPreview)
+                        groupDivider()
+                        labeledRow("Network", value: model.node.network.capitalized)
+                        groupDivider()
+                        labeledRow("Peers", value: "\(model.node.peers)")
+                        groupDivider()
+                        labeledRow("Version", value: model.node.version)
                     }
 
-                    sectionHeader("Security")
-                    FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            demoSecurityRow("App Lock", systemImage: "lock.fill")
-                            Divider().opacity(0.35)
-                            demoSecurityRow("Tor V3 Auth", systemImage: "key.fill")
-                            Divider().opacity(0.35)
-                            demoSecurityRow("Signers", systemImage: "signature")
-                            Text("Demo placeholders — not linked to classic Security Center yet.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                    settingsGroup("Security") {
+                        labeledRow {
+                            Label("App Lock", systemImage: "lock.fill")
+                        } value: {
+                            Text("Demo").foregroundStyle(.tertiary)
                         }
+                        groupDivider()
+                        labeledRow {
+                            Label("Tor V3 Auth", systemImage: "key.fill")
+                        } value: {
+                            Text("Demo").foregroundStyle(.tertiary)
+                        }
+                        groupDivider()
+                        labeledRow {
+                            Label("Signers", systemImage: "signature")
+                        } value: {
+                            Text("Demo").foregroundStyle(.tertiary)
+                        }
+                        Text("Demo placeholders — not linked to classic Security Center yet.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
                     }
 
-                    sectionHeader("Wallet")
-                    FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            LabeledContent("Active", value: model.wallet.name)
-                            Divider().opacity(0.35)
-                            LabeledContent("Currency", value: model.wallet.fiatCode)
-                            Divider().opacity(0.35)
-                            LabeledContent("Type", value: model.wallet.typeLabel)
-                        }
+                    settingsGroup("Wallet") {
+                        labeledRow("Active", value: model.wallet.name)
+                        groupDivider()
+                        labeledRow("Currency", value: model.wallet.fiatCode)
+                        groupDivider()
+                        labeledRow("Type", value: model.wallet.typeLabel)
                     }
 
-                    sectionHeader("About")
-                    FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            LabeledContent("Interface", value: "SwiftUI design spike")
-                            Divider().opacity(0.35)
-                            LabeledContent("Default shell", value: "Classic UIKit")
-                            Divider().opacity(0.35)
-                            LabeledContent("Minimum iOS", value: "18.0")
-                            Divider().opacity(0.35)
-                            LabeledContent("Liquid Glass APIs", value: "iOS 26+ (gated)")
-                        }
+                    settingsGroup("About") {
+                        labeledRow("Interface", value: "SwiftUI design spike")
+                        groupDivider()
+                        labeledRow("Default shell", value: "Classic UIKit")
+                        groupDivider()
+                        labeledRow("Minimum iOS", value: "18.0")
+                        groupDivider()
+                        labeledRow("Liquid Glass APIs", value: "iOS 26+ (gated)")
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, 100) // clear floating glass tab bar
+                .padding(.bottom, 140) // clear floating glass tab bar
             }
             .background {
                 LinearGradient(
@@ -107,25 +109,51 @@ struct FNSettingsView: View {
         }
     }
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-            .padding(.leading, 4)
+    @ViewBuilder
+    private func settingsGroup<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .padding(.leading, 4)
+
+            // Material-only: avoids iOS 26 multi-glass ScrollView smash.
+            FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM, useGlass: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    content()
+                }
+            }
+        }
     }
 
-    private func demoSecurityRow(_ title: String, systemImage: String) -> some View {
-        HStack {
-            Label(title, systemImage: systemImage)
-            Spacer(minLength: 8)
-            Text("Demo")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
+    private func groupDivider() -> some View {
+        Divider().opacity(0.35)
+    }
+
+    private func labeledRow(_ title: String, value: String) -> some View {
+        labeledRow {
+            Text(title)
+        } value: {
+            Text(value)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private func labeledRow<L: View, V: View>(
+        @ViewBuilder label: () -> L,
+        @ViewBuilder value: () -> V
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            label()
+            Spacer(minLength: 12)
+            value()
         }
         .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), demo placeholder, not navigable")
     }
 }
 

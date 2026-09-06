@@ -103,8 +103,12 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x Scripts/capture-gallery-screenshots.sh
-          python3 -m pip install --user Pillow >/dev/null 2>&1 || true
-          Scripts/capture-gallery-screenshots.sh
+          # Bounded pip so a registry hang cannot stall the job indefinitely
+          python3 -m pip install --user --disable-pip-version-check Pillow \
+            || echo "WARN: Pillow install failed — contact sheet may be a duplicate"
+          # Pass through CI DerivedData so we do not rebuild unnecessarily
+          DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
+            Scripts/capture-gallery-screenshots.sh
 
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4

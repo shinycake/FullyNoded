@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build FNGlassGallery and capture Liquid Glass screenshots.
-# REQUIRES Xcode with Swift 6.2+ (compiler glass symbols) AND an iOS 26+ Simulator runtime.
+# REQUIRES Xcode 26+ (Swift 6.2 glass symbols) AND an iOS 26+ Simulator runtime.
 # Material/capsule fallbacks must NOT be published as Liquid Glass.
 set -euo pipefail
 
@@ -16,6 +16,17 @@ mkdir -p "$OUT_DOCS" "$OUT_ART"
 
 echo "==> Locating Xcode with iOS 26 / Swift 6.2 glass support"
 select_xcode() {
+  # CI already selected Xcode — honor DEVELOPER_DIR / xcode-select when major >= 26.
+  if [[ -n "${DEVELOPER_DIR:-}" ]] && [[ -d "${DEVELOPER_DIR}" ]]; then
+    local maj
+    maj="$(xcodebuild -version 2>/dev/null | awk '/Xcode/{print $2}' | cut -d. -f1 || true)"
+    if [[ -n "$maj" ]] && (( maj >= 26 )); then
+      echo "Using preselected DEVELOPER_DIR=$DEVELOPER_DIR"
+      xcodebuild -version
+      return 0
+    fi
+  fi
+
   local candidates=()
   local found
   while IFS= read -r found; do
@@ -31,7 +42,6 @@ select_xcode() {
     [[ -n "$ver" ]] || continue
     major="${ver%%.*}"
     score=$major
-    # Prefer beta when majors tie (often ships newer SDK first)
     if [[ "$app" == *beta* ]] || [[ "$app" == *Beta* ]]; then
       score=$((score + 1))
     fi
@@ -54,6 +64,7 @@ select_xcode() {
 select_xcode
 
 XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/{print $2}' | cut -d. -f1)"
+XCODE_VERSION="$(xcodebuild -version | tr '\n' ' ')"
 if [[ -z "$XCODE_MAJOR" ]] || (( XCODE_MAJOR < 26 )); then
   cat >&2 <<EOF
 ERROR: Xcode ${XCODE_MAJOR:-unknown} is too old for Liquid Glass compile-time APIs.
@@ -136,11 +147,28 @@ echo "Simulator UDID=$UDID"
 echo "Runtime: $IOS26_LABEL"
 echo "Destination: $DESTINATION"
 
-echo "==> Booting simulator"
+echo "==> Booting simulator (120s timeout on bootstatus)"
+# Open Simulator.app so CoreSimulator services are warm (avoids bootstatus hangs on GHA).
+open -a Simulator --args -CurrentDeviceUDID "$UDID" 2>/dev/null || true
 xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl bootstatus "$UDID" -b
+if command -v timeout >/dev/null 2>&1; then
+  timeout 120 xcrun simctl bootstatus "$UDID" -b || {
+    echo "WARN: bootstatus timed out after 120s — continuing anyway" >&2
+  }
+else
+  # macOS often lacks GNU timeout; poll manually
+  for _ in $(seq 1 60); do
+    if xcrun simctl list devices | grep -q "$UDID.*Booted"; then
+      break
+    fi
+    sleep 2
+  done
+fi
+# Brief settle after boot
+sleep 2
 
 # Reuse existing build if APP already present under DERIVED (CI builds first)
+echo "==> Looking for FNGlassGallery.app under $DERIVED"
 APP="$(find "$DERIVED/Build/Products" -name 'FNGlassGallery.app' -type d 2>/dev/null | head -1 || true)"
 if [[ -z "$APP" ]]; then
   echo "==> Building $SCHEME for iOS 26 simulator"
@@ -159,11 +187,12 @@ fi
 
 if [[ -z "$APP" ]]; then
   echo "ERROR: FNGlassGallery.app not found under $DERIVED" >&2
+  find "$DERIVED" -name '*.app' 2>/dev/null | head -20 >&2 || true
   exit 1
 fi
 echo "App: $APP"
 
-echo "==> Installing"
+echo "==> Installing $BUNDLE_ID"
 xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 xcrun simctl install "$UDID" "$APP"
 
@@ -174,9 +203,10 @@ capture_screen() {
   echo "==> Capturing $screen → ${screen}.png"
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
   xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen"
-  sleep 2.8
+  sleep 3.0
   xcrun simctl io "$UDID" screenshot "$OUT_DOCS/${screen}.png"
   cp "$OUT_DOCS/${screen}.png" "$OUT_ART/${screen}.png"
+  ls -la "$OUT_DOCS/${screen}.png"
 }
 
 for screen in "${SCREENS[@]}"; do
@@ -193,7 +223,6 @@ names = ["home", "activity", "send", "receive", "settings"]
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
-    # Fallback: copy home as placeholder and warn
     src = docs / "home.png"
     for dest in (docs / "contact-sheet.png", art / "contact-sheet.png", docs / "sheet.png", art / "sheet.png"):
         dest.write_bytes(src.read_bytes())
@@ -228,9 +257,8 @@ for dest in (docs / "contact-sheet.png", art / "contact-sheet.png", docs / "shee
 print(f"Wrote contact sheet {sheet.size[0]}x{sheet.size[1]}")
 PY
 
-# Provenance sidecar for PR summary
 {
-  echo "xcode=$(xcodebuild -version | tr '\n' ' ')"
+  echo "xcode=$XCODE_VERSION"
   echo "runtime=$IOS26_RUNTIME"
   echo "runtime_label=$IOS26_LABEL"
   echo "udid=$UDID"

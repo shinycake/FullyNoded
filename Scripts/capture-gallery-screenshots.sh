@@ -4,6 +4,13 @@
 # Material/capsule fallbacks must NOT be published as Liquid Glass.
 set -euo pipefail
 
+# Portable timeout (macOS GHA often lacks GNU timeout).
+run_with_timeout() {
+  local secs="$1"; shift
+  perl -e "alarm shift; exec @ARGV" "$secs" "$@"
+}
+
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DOCS="${OUT_DOCS:-$ROOT/Docs/ui-redesign}"
 OUT_ART="${OUT_ART:-$ROOT/artifacts/ui-screenshots}"
@@ -147,24 +154,23 @@ echo "Simulator UDID=$UDID"
 echo "Runtime: $IOS26_LABEL"
 echo "Destination: $DESTINATION"
 
-echo "==> Booting simulator (120s timeout on bootstatus)"
-# Open Simulator.app so CoreSimulator services are warm (avoids bootstatus hangs on GHA).
-open -a Simulator --args -CurrentDeviceUDID "$UDID" 2>/dev/null || true
-xcrun simctl boot "$UDID" 2>/dev/null || true
-if command -v timeout >/dev/null 2>&1; then
-  timeout 120 xcrun simctl bootstatus "$UDID" -b || {
-    echo "WARN: bootstatus timed out after 120s — continuing anyway" >&2
-  }
-else
-  # macOS often lacks GNU timeout; poll manually
-  for _ in $(seq 1 60); do
-    if xcrun simctl list devices | grep -q "$UDID.*Booted"; then
-      break
-    fi
-    sleep 2
-  done
+echo "==> Booting simulator (120s max)"
+# Avoid `open -a Simulator` on CI — Simulator.app can hang forever on headless GHA.
+if [[ -z "${GITHUB_ACTIONS:-}${CI:-}" ]]; then
+  open -a Simulator --args -CurrentDeviceUDID "$UDID" 2>/dev/null || true
 fi
-# Brief settle after boot
+xcrun simctl boot "$UDID" 2>/dev/null || true
+booted=0
+for _ in $(seq 1 60); do
+  if xcrun simctl list devices | grep -q "$UDID.*Booted"; then
+    booted=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$booted" -ne 1 ]]; then
+  echo "WARN: simulator not Booted after 120s — continuing anyway" >&2
+fi
 sleep 2
 
 # Reuse existing build if APP already present under DERIVED (CI builds first)
@@ -194,7 +200,7 @@ echo "App: $APP"
 
 echo "==> Installing $BUNDLE_ID"
 xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
-xcrun simctl install "$UDID" "$APP"
+run_with_timeout 90 xcrun simctl install "$UDID" "$APP"
 
 declare -a SCREENS=(home activity send receive settings)
 
@@ -202,9 +208,9 @@ capture_screen() {
   local screen="$1"
   echo "==> Capturing $screen → ${screen}.png"
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
-  xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen"
+  run_with_timeout 60 xcrun simctl launch "$UDID" "$BUNDLE_ID" "-FNGalleryScreen" "$screen"
   sleep 3.0
-  xcrun simctl io "$UDID" screenshot "$OUT_DOCS/${screen}.png"
+  run_with_timeout 60 xcrun simctl io "$UDID" screenshot "$OUT_DOCS/${screen}.png"
   cp "$OUT_DOCS/${screen}.png" "$OUT_ART/${screen}.png"
   ls -la "$OUT_DOCS/${screen}.png"
 }

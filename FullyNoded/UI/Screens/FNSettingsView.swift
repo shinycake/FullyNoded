@@ -91,7 +91,7 @@ struct FNSettingsView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, 100) // clear floating glass tab bar
                 }
             }
             .background {

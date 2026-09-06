@@ -117,9 +117,15 @@ struct FNGlassCard<Content: View>: View {
     }
 
     var body: some View {
-        // Colored underlay so Liquid Glass refraction reads in screenshots
-        // (dark glass on flat black can look like an opaque fill).
-        ZStack {
+        // Explicit VStack: @ViewBuilder multi-child content is a TupleView; without a
+        // stack, rows share one frame and smash on top of each other (seen in Settings).
+        VStack(alignment: .leading, spacing: 12) {
+            content()
+        }
+        .padding(padding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            // Soft color under glass so refraction reads on dark gallery backgrounds.
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -134,12 +140,8 @@ struct FNGlassCard<Content: View>: View {
                 )
                 .blur(radius: 12)
                 .padding(-6)
-
-            content()
-                .padding(padding)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
         }
+        .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
     }
 }
 

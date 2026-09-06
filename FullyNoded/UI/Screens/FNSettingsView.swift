@@ -105,7 +105,9 @@ struct FNSettingsView: View {
                 .padding(.leading, 4)
             FNGlassContainer {
                 FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM) {
-                    content()
+                    VStack(alignment: .leading, spacing: 12) {
+                        content()
+                    }
                 }
             }
         }

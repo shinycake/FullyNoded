@@ -117,31 +117,30 @@ struct FNGlassCard<Content: View>: View {
     }
 
     var body: some View {
-        // Explicit VStack: @ViewBuilder multi-child content is a TupleView; without a
-        // stack, rows share one frame and smash on top of each other (seen in Settings).
-        VStack(alignment: .leading, spacing: 12) {
-            content()
-        }
-        .padding(padding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            // Soft color under glass so refraction reads on dark gallery backgrounds.
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.orange.opacity(0.22),
-                            Color.blue.opacity(0.16),
-                            Color.cyan.opacity(0.10)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        // Call sites must pass a single root (typically VStack). Do not wrap
+        // `content()` in another VStack { content() } — that leaves a TupleView
+        // as one child and rows overlay each other.
+        content()
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                // Soft color under glass so refraction reads on dark gallery backgrounds.
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.orange.opacity(0.22),
+                                Color.blue.opacity(0.16),
+                                Color.cyan.opacity(0.10)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .blur(radius: 12)
-                .padding(-6)
-        }
-        .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
+                    .blur(radius: 12)
+                    .padding(-6)
+            }
+            .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
     }
 }
 

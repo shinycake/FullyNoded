@@ -93,7 +93,10 @@ struct FNSettingsView: View {
         }
     }
 
-    private func glassSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func glassSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.footnote.weight(.semibold))

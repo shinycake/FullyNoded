@@ -18,7 +18,11 @@ enum FNGlassAvailability {
 
 /// Morphing / shared glass space on iOS 26; passthrough otherwise.
 struct FNGlassContainer<Content: View>: View {
-    @ViewBuilder var content: () -> Content
+    @ViewBuilder private var content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
 
     var body: some View {
         if #available(iOS 26.0, *) {

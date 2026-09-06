@@ -114,42 +114,13 @@ jobs:
           python3 -m venv .fn-shot-venv
           .fn-shot-venv/bin/pip install --disable-pip-version-check Pillow
           .fn-shot-venv/bin/python -c "from PIL import Image; print('Pillow OK', Image.__version__)"
-          # Pass through CI DerivedData + venv python for contact sheet
           export PATH="${GITHUB_WORKSPACE}/.fn-shot-venv/bin:${PATH}"
-          # Hard-cap capture. Prefer Python poll-killer over perl alarm — perl
-          # SIGALRM kills the shell but can leave wedged simctl grandchildren.
-          # Keep every line of this block indented — bare "import" breaks workflow YAML.
+          # Overall hard-cap. Per-command poll/abandon timeouts live in the capture script.
+          # Keep this step YAML-safe (no undented heredoc / python -c block).
           DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
-            /usr/bin/python3 -c '
-import os, signal, subprocess, sys, threading, time
-secs = 600
-cmd = ["Scripts/capture-gallery-screenshots.sh"]
-env = os.environ.copy()
-proc = subprocess.Popen(cmd, start_new_session=True, env=env)
-done = threading.Event()
+            perl -e 'alarm shift; exec @ARGV' 600 \
+            Scripts/capture-gallery-screenshots.sh
 
-def nuke():
-    if done.is_set():
-        return
-    print("WARN: overall capture timed out after %ss" % secs, file=sys.stderr, flush=True)
-    try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    subprocess.run(["pkill", "-9", "-f", r"simctl "], check=False,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-timer = threading.Timer(secs, nuke)
-timer.daemon = True
-timer.start()
-try:
-    while proc.poll() is None:
-        time.sleep(0.5)
-finally:
-    done.set()
-    timer.cancel()
-sys.exit(proc.returncode if proc.returncode is not None else 1)
-'
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
         with:

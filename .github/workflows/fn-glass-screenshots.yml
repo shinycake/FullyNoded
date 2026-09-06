@@ -103,11 +103,13 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x Scripts/capture-gallery-screenshots.sh
-          # Contact sheet needs Pillow; fail the step if install fails so we
-          # never publish a home.png duplicate labeled as contact-sheet.
-          python3 -m pip install --user --disable-pip-version-check Pillow
-          python3 -c "from PIL import Image; print('Pillow OK', Image.__version__)"
-          # Pass through CI DerivedData so we do not rebuild unnecessarily
+          # Contact sheet needs Pillow. macos runners use PEP 668 managed Python —
+          # use a local venv so install is reliable (no silent home.png duplicate).
+          python3 -m venv .fn-shot-venv
+          .fn-shot-venv/bin/pip install --disable-pip-version-check Pillow
+          .fn-shot-venv/bin/python -c "from PIL import Image; print('Pillow OK', Image.__version__)"
+          # Pass through CI DerivedData + venv python for contact sheet
+          export PATH="${GITHUB_WORKSPACE}/.fn-shot-venv/bin:${PATH}"
           DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
             Scripts/capture-gallery-screenshots.sh
 

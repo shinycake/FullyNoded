@@ -12,11 +12,13 @@ This is a **design spike**, not the production shell.
 
 ## Screenshots
 
-Captured on an **iOS 26** Simulator with Xcode 26+ (see `capture-provenance.txt` when present). Older OS captures are rejected by CI.
+Captured on **Xcode 26.0.1 (17A400)** · **iOS 26.0 (26.0.1 / 23A8464)** Simulator (`iPhone 16`). See `capture-provenance.txt`.
+
+Older OS captures are rejected by CI (no silent iOS 18 material fallbacks published as glass).
 
 | File | Screen |
 |------|--------|
-| [home.png](./home.png) | Home — glass balance hero, glass Send/Receive, glass node card, system tab chrome |
+| [home.png](./home.png) | Home — glass tab chrome, balance/node heroes, Send/Receive actions |
 | [activity.png](./activity.png) | Activity — glass search + list surface |
 | [send.png](./send.png) | Send — glass form + fee card, Create PSBT disabled |
 | [receive.png](./receive.png) | Receive — glass QR card, DEMO watermark, Copy/Share off |

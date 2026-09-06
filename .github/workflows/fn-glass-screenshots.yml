@@ -103,9 +103,10 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x Scripts/capture-gallery-screenshots.sh
-          # Bounded pip so a registry hang cannot stall the job indefinitely
-          python3 -m pip install --user --disable-pip-version-check Pillow \
-            || echo "WARN: Pillow install failed — contact sheet may be a duplicate"
+          # Contact sheet needs Pillow; fail the step if install fails so we
+          # never publish a home.png duplicate labeled as contact-sheet.
+          python3 -m pip install --user --disable-pip-version-check Pillow
+          python3 -c "from PIL import Image; print('Pillow OK', Image.__version__)"
           # Pass through CI DerivedData so we do not rebuild unnecessarily
           DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
             Scripts/capture-gallery-screenshots.sh

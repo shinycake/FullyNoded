@@ -118,18 +118,20 @@ jobs:
           export PATH="${GITHUB_WORKSPACE}/.fn-shot-venv/bin:${PATH}"
           # Hard-cap capture. Prefer Python poll-killer over perl alarm — perl
           # SIGALRM kills the shell but can leave wedged simctl grandchildren.
+          # Keep every line of this block indented — bare "import" breaks workflow YAML.
           DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
-            /usr/bin/python3 - <<'PY'
+            /usr/bin/python3 -c '
 import os, signal, subprocess, sys, threading, time
 secs = 600
 cmd = ["Scripts/capture-gallery-screenshots.sh"]
-proc = subprocess.Popen(cmd, start_new_session=True, env=os.environ.copy())
+env = os.environ.copy()
+proc = subprocess.Popen(cmd, start_new_session=True, env=env)
 done = threading.Event()
 
 def nuke():
     if done.is_set():
         return
-    print(f"WARN: overall capture timed out after {secs}s", file=sys.stderr, flush=True)
+    print("WARN: overall capture timed out after %ss" % secs, file=sys.stderr, flush=True)
     try:
         os.killpg(proc.pid, signal.SIGKILL)
     except ProcessLookupError:
@@ -147,8 +149,7 @@ finally:
     done.set()
     timer.cancel()
 sys.exit(proc.returncode if proc.returncode is not None else 1)
-PY
-
+'
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
         with:

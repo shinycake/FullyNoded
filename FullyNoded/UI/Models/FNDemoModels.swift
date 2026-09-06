@@ -18,7 +18,7 @@ final class FNAppModel {
         wallet: FNWalletSnapshot = .demo,
         transactions: [FNTransaction] = FNTransaction.demoList,
         node: FNNodeStatus = .demo,
-        receiveAddress: String = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        receiveAddress: String = FNLaunchFlags.demoReceiveAddress,
         sendDraft: FNSendDraft = .empty
     ) {
         self.useGlassShell = useGlassShell
@@ -156,7 +156,12 @@ struct FNSendDraft: Hashable {
 }
 
 enum FNLaunchFlags {
-    static var useGlassShellByDefault: Bool { true }
+    /// Default OFF — production boots classic UIKit. Glass is gallery + explicit opt-in only.
+    static var useGlassShellByDefault: Bool { false }
+
+    /// Well-known BIP173 example used only in demo/gallery UI — never treat as a live wallet address.
+    static let demoReceiveAddress = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+
     static var useGlassShell: Bool {
         get {
             if UserDefaults.standard.object(forKey: "fnUseGlassShell") == nil {

@@ -1,55 +1,58 @@
 import SwiftUI
 import UIKit
+import CoreImage.CIFilterBuiltins
 
-struct FNQRPlaceholder: View {
+/// Real QR via Core Image. Demo payloads should be watermarked by the caller.
+struct FNQRCodeView: View {
     let payload: String
     var cell: CGFloat = 9
 
     var body: some View {
-        let cells = Self.pattern(from: payload)
-        VStack(spacing: 1.5) {
-            ForEach(0..<21, id: \.self) { row in
-                HStack(spacing: 1.5) {
-                    ForEach(0..<21, id: \.self) { col in
-                        Rectangle()
-                            .fill(cells[row][col] ? Color.primary : Color.clear)
-                            .frame(width: cell, height: cell)
-                    }
-                }
+        Group {
+            if let image = Self.makeQRImage(from: payload) {
+                Image(uiImage: image)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: cell * 21 + 36, height: cell * 21 + 36)
+                    .padding(4)
+                    .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: FNTheme.radiusM, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FNTheme.radiusM, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+            } else {
+                Image(systemName: "qrcode")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.secondary)
+                    .frame(width: cell * 21 + 36, height: cell * 21 + 36)
             }
         }
-        .padding(18)
-        .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: FNTheme.radiusM, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: FNTheme.radiusM, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-        )
-        .accessibilityLabel("Receive QR code")
+        .accessibilityLabel("QR code")
         .accessibilityValue(payload)
     }
 
-    private static func pattern(from seed: String) -> [[Bool]] {
-        var grid = Array(repeating: Array(repeating: false, count: 21), count: 21)
-        for origin in [(0, 0), (0, 14), (14, 0)] {
-            for r in 0..<7 {
-                for c in 0..<7 {
-                    let onBorder = r == 0 || r == 6 || c == 0 || c == 6
-                    let inCenter = (2...4).contains(r) && (2...4).contains(c)
-                    grid[origin.0 + r][origin.1 + c] = onBorder || inCenter
-                }
-            }
-        }
-        var hash: UInt64 = 5381
-        for b in seed.utf8 { hash = ((hash << 5) &+ hash) &+ UInt64(b) }
-        for r in 0..<21 {
-            for c in 0..<21 {
-                if grid[r][c] { continue }
-                if r == 6 || c == 6 { grid[r][c] = (r + c) % 2 == 0; continue }
-                hash = hash &* 6364136223846793005 &+ 1
-                grid[r][c] = (hash % 3) != 0
-            }
-        }
-        return grid
+    private static func makeQRImage(from string: String) -> UIImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(string.utf8)
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cg = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+}
+
+struct FNDemoBanner: View {
+    var text: String = "Demo data — not your wallet"
+
+    var body: some View {
+        Label(text, systemImage: "exclamationmark.triangle.fill")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel(text)
     }
 }
 

@@ -7,6 +7,13 @@ struct FNHomeView: View {
         NavigationStack {
             List {
                 Section {
+                    FNDemoBanner(text: "Demo balances & node — not your live wallet")
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+
+                Section {
                     balanceBlock
                         .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20))
                         .listRowBackground(Color.clear)

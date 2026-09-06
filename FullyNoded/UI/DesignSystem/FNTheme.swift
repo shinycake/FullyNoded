@@ -2,7 +2,8 @@ import SwiftUI
 
 /// First-party tokens. Prefer semantic colors in views; accent is the only brand tint.
 enum FNTheme {
-    static let accent = Color.orange
+    /// Prefer the app tint (system orange) so glass screens match UIKit chrome.
+    static let accent = Color.accentColor
     static let radiusM: CGFloat = 14
 }
 

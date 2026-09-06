@@ -9,6 +9,10 @@ struct FNSendView: View {
         NavigationStack {
             Form {
                 Section {
+                    FNDemoBanner(text: "Demo send form — PSBT creation not wired")
+                }
+
+                Section {
                     TextField("Address or bitcoin: URI", text: $model.sendDraft.address)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -25,7 +29,7 @@ struct FNSendView: View {
                 } header: {
                     Text("Payment")
                 } footer: {
-                    Text("Available \(model.wallet.balanceBTCString) BTC in \(model.wallet.name)")
+                    Text("Demo balance \(model.wallet.balanceBTCString) BTC in \(model.wallet.name). Not your live wallet.")
                 }
 
                 Section("Network Fee") {
@@ -48,10 +52,13 @@ struct FNSendView: View {
                         Label("Fill Demo Recipient", systemImage: "doc.on.clipboard")
                     }
 
-                    Button { focused = nil } label: {
-                        Label("Create PSBT", systemImage: "doc.badge.plus")
+                    Button { } label: {
+                        Label("Create PSBT (Demo)", systemImage: "doc.badge.plus")
                     }
-                    .tint(FNTheme.accent)
+                    .disabled(true)
+                    .accessibilityLabel("Create PSBT disabled until wired to classic UIKit flow")
+                } footer: {
+                    Text("Create PSBT stays disabled in the glass shell until it presents the existing UIKit PSBT flow.")
                 }
             }
             .navigationTitle("Send")

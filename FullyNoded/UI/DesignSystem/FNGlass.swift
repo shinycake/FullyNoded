@@ -117,10 +117,29 @@ struct FNGlassCard<Content: View>: View {
     }
 
     var body: some View {
-        content()
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
+        // Colored underlay so Liquid Glass refraction reads in screenshots
+        // (dark glass on flat black can look like an opaque fill).
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.orange.opacity(0.22),
+                            Color.blue.opacity(0.16),
+                            Color.cyan.opacity(0.10)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .blur(radius: 12)
+                .padding(-6)
+
+            content()
+                .padding(padding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
+        }
     }
 }
 

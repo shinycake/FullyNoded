@@ -12,7 +12,7 @@ This is a **design spike**, not the production shell.
 
 ## Screenshots
 
-Captured on **Xcode 26.0.1 (17A400)** · **iOS 26.0 (26.0.1 / 23A8464)** Simulator (`iPhone 16`). See `capture-provenance.txt`.
+Captured with **Xcode 26.0.1 (Build 17A400)** · **iOS 26.0 (26.0.1 — 23A8464)** Simulator. See `capture-provenance.txt`.
 
 Older OS captures are rejected by CI (no silent iOS 18 material fallbacks published as glass).
 

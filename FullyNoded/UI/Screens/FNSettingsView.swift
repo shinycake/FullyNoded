@@ -112,7 +112,7 @@ struct FNSettingsView: View {
     @ViewBuilder
     private func settingsGroup<Content: View>(
         _ title: String,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)

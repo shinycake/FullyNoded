@@ -117,30 +117,48 @@ struct FNGlassCard<Content: View>: View {
     }
 
     var body: some View {
-        // Call sites must pass a single root (typically VStack). Do not wrap
-        // `content()` in another VStack { content() } — that leaves a TupleView
-        // as one child and rows overlay each other.
+        // Glass must be a BACKGROUND plate. Applying `.glassEffect` directly to a
+        // multi-row VStack collapses/overlays children on iOS 26 (Settings smash).
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                // Soft color under glass so refraction reads on dark gallery backgrounds.
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.orange.opacity(0.22),
-                                Color.blue.opacity(0.16),
-                                Color.cyan.opacity(0.10)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                ZStack {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.orange.opacity(0.18),
+                                    Color.blue.opacity(0.12),
+                                    Color.cyan.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .blur(radius: 12)
-                    .padding(-6)
+                    glassPlate
+                }
             }
-            .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var glassPlate: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(iOS 26.0, *) {
+            #if compiler(>=6.2)
+            if interactive {
+                shape.glassEffect(.regular.interactive(), in: shape)
+            } else {
+                shape.glassEffect(.regular, in: shape)
+            }
+            #else
+            shape.fill(.regularMaterial)
+            #endif
+        } else {
+            shape.fill(.regularMaterial)
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+        }
     }
 }
 

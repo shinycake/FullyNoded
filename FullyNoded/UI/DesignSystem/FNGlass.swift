@@ -1,27 +1,81 @@
 import SwiftUI
 import UIKit
 
-/// Selective Liquid Glass for floating controls / rare chrome — not full-screen frost.
+// MARK: - Availability
 
-struct FNSelectiveGlassModifier: ViewModifier {
-    var cornerRadius: CGFloat = FNTheme.radiusM
+enum FNGlassAvailability {
+    /// Compile-time: Swift 6.2+ ships Liquid Glass symbols (Xcode 26).
+    static var compilerSupportsGlass: Bool {
+        #if compiler(>=6.2)
+        true
+        #else
+        false
+        #endif
+    }
+}
 
-    func body(content: Content) -> some View {
+// MARK: - Container
+
+/// Morphing / shared glass space on iOS 26; passthrough otherwise.
+struct FNGlassContainer<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
         if #available(iOS 26.0, *) {
             #if compiler(>=6.2)
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            GlassEffectContainer { content() }
             #else
-            content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            content()
             #endif
         } else {
-            content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            content()
         }
     }
 }
 
+// MARK: - Selective glass surface
+
+struct FNSelectiveGlassModifier: ViewModifier {
+    var cornerRadius: CGFloat = FNTheme.radiusM
+    var interactive: Bool = false
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            #if compiler(>=6.2)
+            if interactive {
+                content.glassEffect(
+                    .regular.interactive(),
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
+            } else {
+                content.glassEffect(
+                    .regular,
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
+            }
+            #else
+            materialFallback(content)
+            #endif
+        } else {
+            materialFallback(content)
+        }
+    }
+
+    @ViewBuilder
+    private func materialFallback(_ content: Content) -> some View {
+        content
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+            )
+    }
+}
+
 extension View {
-    func fnSelectiveGlass(cornerRadius: CGFloat = FNTheme.radiusM) -> some View {
-        modifier(FNSelectiveGlassModifier(cornerRadius: cornerRadius))
+    /// Hero / chrome glass — translucent on iOS 26, material card otherwise.
+    func fnSelectiveGlass(cornerRadius: CGFloat = FNTheme.radiusM, interactive: Bool = false) -> some View {
+        modifier(FNSelectiveGlassModifier(cornerRadius: cornerRadius, interactive: interactive))
     }
 
     @ViewBuilder
@@ -39,6 +93,33 @@ extension View {
     }
 }
 
+/// Padded glass card for balance / node / QR / fee heroes.
+struct FNGlassCard<Content: View>: View {
+    var padding: CGFloat
+    var cornerRadius: CGFloat
+    var interactive: Bool
+    @ViewBuilder var content: () -> Content
+
+    init(
+        padding: CGFloat = 20,
+        cornerRadius: CGFloat = FNTheme.radiusL,
+        interactive: Bool = false,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.padding = padding
+        self.cornerRadius = cornerRadius
+        self.interactive = interactive
+        self.content = content
+    }
+
+    var body: some View {
+        content()
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fnSelectiveGlass(cornerRadius: cornerRadius, interactive: interactive)
+    }
+}
+
 struct FNCapsuleButtonStyle: ButtonStyle {
     var prominent: Bool = false
 
@@ -50,7 +131,13 @@ struct FNCapsuleButtonStyle: ButtonStyle {
             .foregroundStyle(prominent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
             .background {
                 Capsule(style: .continuous)
-                    .fill(prominent ? AnyShapeStyle(FNTheme.accent) : AnyShapeStyle(Color(uiColor: .tertiarySystemFill)))
+                    .fill(prominent ? AnyShapeStyle(FNTheme.accent) : AnyShapeStyle(.regularMaterial))
+            }
+            .overlay {
+                if !prominent {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
+                }
             }
             .opacity(configuration.isPressed ? 0.85 : 1)
     }

@@ -5,81 +5,100 @@ struct FNHomeView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
                     FNDemoBanner(text: "Demo balances & node — not your live wallet")
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                }
+                        .padding(.horizontal, 4)
 
-                Section {
-                    balanceBlock
-                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                }
-
-                Section {
-                    HStack(spacing: 12) {
-                        Button { model.selectedTab = .receive } label: {
-                            Label("Receive", systemImage: "arrow.down")
-                                .frame(maxWidth: .infinity)
+                    // Balance hero — Liquid Glass card (visible chrome)
+                    FNGlassContainer {
+                        FNGlassCard(interactive: true) {
+                            balanceContent
                         }
-                        .fnGlassButton()
+                    }
 
-                        Button { model.selectedTab = .send } label: {
-                            Label("Send", systemImage: "arrow.up")
-                                .frame(maxWidth: .infinity)
+                    // Primary actions — native glass buttons morph in container
+                    FNGlassContainer {
+                        HStack(spacing: 12) {
+                            Button { model.selectedTab = .receive } label: {
+                                Label("Receive", systemImage: "arrow.down")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .fnGlassButton()
+
+                            Button { model.selectedTab = .send } label: {
+                                Label("Send", systemImage: "arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .fnGlassButton(prominent: true)
                         }
-                        .fnGlassButton(prominent: true)
                     }
-                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 12, trailing: 20))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
 
-                Section("Node") {
-                    HStack(spacing: 12) {
-                        Image(systemName: model.node.isTor ? "shield.lefthalf.filled" : "server.rack")
-                            .foregroundStyle(model.node.isConnected ? Color.green : Color.secondary)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(model.node.name)
-                            Text("\(model.node.version) · \(model.node.blockHeight.formatted())")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                    // Node status — glass surface
+                    FNGlassContainer {
+                        FNGlassCard(padding: 16, cornerRadius: FNTheme.radiusM, interactive: true) {
+                            nodeContent
                         }
-                        Spacer()
-                        Text(model.node.isConnected ? "Connected" : "Offline")
-                            .font(.subheadline)
-                            .foregroundStyle(model.node.isConnected ? Color.green : Color.secondary)
                     }
-                    .accessibilityElement(children: .combine)
-                }
 
-                Section("Recent") {
-                    ForEach(Array(model.transactions.prefix(3))) { tx in
-                        FNTransactionRow(tx: tx)
-                    }
-                    Button { model.selectedTab = .activity } label: {
-                        Text("See All Activity")
+                    // Recent stays inset-grouped style (content, not chrome)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Recent")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                            .padding(.leading, 4)
+
+                        VStack(spacing: 0) {
+                            ForEach(Array(model.transactions.prefix(3).enumerated()), id: \.element.id) { index, tx in
+                                FNTransactionRow(tx: tx)
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal, 4)
+                                if index < 2 {
+                                    Divider().opacity(0.35)
+                                }
+                            }
+                            Button { model.selectedTab = .activity } label: {
+                                Text("See All Activity")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 10)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .fnSelectiveGlass(cornerRadius: FNTheme.radiusM)
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 28)
             }
-            .listStyle(.insetGrouped)
+            .background {
+                // Soft depth so glass refraction reads in screenshots
+                LinearGradient(
+                    colors: [
+                        Color.orange.opacity(0.18),
+                        Color.clear,
+                        Color.blue.opacity(0.12)
+                    ],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+                .ignoresSafeArea()
+            }
             .navigationTitle("Fully Noded")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { } label: { Image(systemName: "arrow.clockwise") }
+                        .fnGlassButton()
                         .accessibilityLabel("Refresh")
                 }
             }
         }
     }
 
-    private var balanceBlock: some View {
+    private var balanceContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(model.wallet.name.uppercased())
                 .font(.caption.weight(.semibold))
@@ -110,10 +129,27 @@ struct FNHomeView: View {
                 .foregroundStyle(.tertiary)
                 .padding(.top, 4)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Balance \(model.wallet.balanceBTCString) bitcoin, \(model.wallet.balanceFiatString)")
+    }
+
+    private var nodeContent: some View {
+        HStack(spacing: 12) {
+            Image(systemName: model.node.isTor ? "shield.lefthalf.filled" : "server.rack")
+                .foregroundStyle(model.node.isConnected ? Color.green : Color.secondary)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.node.name)
+                Text("\(model.node.version) · \(model.node.blockHeight.formatted())")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(model.node.isConnected ? "Connected" : "Offline")
+                .font(.subheadline)
+                .foregroundStyle(model.node.isConnected ? Color.green : Color.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

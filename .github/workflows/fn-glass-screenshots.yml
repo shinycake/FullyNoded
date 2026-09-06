@@ -7,52 +7,101 @@ on:
 
 jobs:
   gallery-screenshots:
-    name: Build gallery + capture screenshots
+    name: Build gallery + capture iOS 26 Liquid Glass screenshots
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: |
-          echo "Available Xcodes:"
-          ls /Applications | grep -i xcode || true
-          XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
-          echo "Using $XCODE"
-          sudo xcode-select -s "$XCODE/Contents/Developer"
-          xcodebuild -version
-          xcrun simctl list devices available | head -40
-
-      - name: Build FNGlassGallery (Simulator)
+      - name: Select Xcode 26+ (Liquid Glass compiler)
         run: |
           set -euo pipefail
-          mkdir -p artifacts/ui-screenshots
+          echo "Available Xcodes:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+
+          pick=""
+          best=-1
+          for app in /Applications/Xcode*.app; do
+            [[ -d "$app" ]] || continue
+            ver=$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>/dev/null | awk '/Xcode/{print $2}' || true)
+            [[ -n "$ver" ]] || continue
+            major=${ver%%.*}
+            score=$major
+            case "$app" in *beta*|*Beta*) score=$((score + 1));; esac
+            if (( score > best )); then
+              best=$score
+              pick=$app
+            fi
+          done
+
+          if [[ -z "$pick" ]]; then
+            echo "ERROR: No Xcode.app found" >&2
+            exit 1
+          fi
+
+          echo "Selecting $pick"
+          sudo xcode-select -s "$pick/Contents/Developer"
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | awk '/Xcode/{print $2}' | cut -d. -f1)
+          if (( MAJOR < 26 )); then
+            echo "ERROR: Need Xcode 26+ for #if compiler(>=6.2) Liquid Glass APIs (found $MAJOR)." >&2
+            echo "macos-15 runner does not currently ship a glass-capable Xcode." >&2
+            exit 2
+          fi
+
+          echo "Runtimes:"
+          xcrun simctl list runtimes
+          if ! xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])'; then
+            echo "ERROR: No iOS 26+ Simulator runtime installed on this runner." >&2
+            exit 2
+          fi
+
+      - name: Build FNGlassGallery (iOS 26 Simulator)
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ui-screenshots Docs/ui-redesign
+
+          RUNTIME=$(xcrun simctl list runtimes | grep -E 'iOS (2[6-9]|[3-9][0-9])' | head -1 \
+            | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+')
+          echo "Using runtime $RUNTIME"
+
+          UDID=$(xcrun simctl list devices available | awk -v rt="$RUNTIME" '
+            index($0, rt) {inrt=1; next}
+            /^--/ {inrt=0}
+            inrt && /iPhone 16 \(/ {
+              if (match($0, /\(([A-F0-9-]{36})\)/)) { print substr($0, RSTART+1, RLENGTH-2); exit }
+            }
+          ')
+          if [[ -z "${UDID:-}" ]]; then
+            UDID=$(xcrun simctl create "FN Glass CI iPhone 16" \
+              com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$RUNTIME")
+          fi
+          echo "UDID=$UDID"
+
           xcodebuild \
             -project FNGlassGallery.xcodeproj \
             -scheme FNGlassGallery \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-            -derivedDataPath build/DerivedData \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            build | xcpretty || xcodebuild \
-            -project FNGlassGallery.xcodeproj \
-            -scheme FNGlassGallery \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "platform=iOS Simulator,id=$UDID" \
             -derivedDataPath build/DerivedData \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Boot simulator, install, screenshot
+      - name: Capture screenshots (fail if not iOS 26)
         run: |
           set -euo pipefail
           chmod +x Scripts/capture-gallery-screenshots.sh
+          # Prefer pip Pillow for contact sheet on the runner
+          python3 -m pip install --user Pillow >/dev/null 2>&1 || true
           Scripts/capture-gallery-screenshots.sh
 
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
         with:
           name: fullynoded-glass-screenshots
-          path: artifacts/ui-screenshots/
-          if-no-files-found: warn
+          path: |
+            artifacts/ui-screenshots/
+            Docs/ui-redesign/*.png
+            Docs/ui-redesign/capture-provenance.txt
+          if-no-files-found: error

@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// Page-style gallery for SwiftUI Previews / manual swipe demos.
+/// Screenshots use `FNGlassRootView` via `FNGlassGalleryApp` so the system Liquid Glass tab bar appears.
 struct FNUIGalleryView: View {
     enum Screen: String, CaseIterable, Identifiable {
         case home, activity, send, receive, settings
@@ -18,7 +20,13 @@ struct FNUIGalleryView: View {
         }
     }
 
-    @State private var selection: Screen = .home
+    @State private var selection: Screen
+
+    init(initial: Screen? = nil) {
+        let fromDefaults = UserDefaults.standard.string(forKey: "FNGalleryScreen")
+            .flatMap { Screen(rawValue: $0.lowercased()) }
+        _selection = State(initialValue: initial ?? fromDefaults ?? .home)
+    }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -30,6 +38,12 @@ struct FNUIGalleryView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .tint(FNTheme.accent)
+        .onAppear {
+            if let raw = UserDefaults.standard.string(forKey: "FNGalleryScreen"),
+               let screen = Screen(rawValue: raw.lowercased()) {
+                selection = screen
+            }
+        }
     }
 }
 

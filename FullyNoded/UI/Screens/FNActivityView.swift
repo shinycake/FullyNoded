@@ -14,40 +14,67 @@ struct FNActivityView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(filtered) { tx in
-                        FNTransactionRow(tx: tx)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    model.transactions.removeAll { $0.id == tx.id }
-                                } label: {
-                                    Label("Hide", systemImage: "eye.slash")
-                                }
-                            }
-                            .contextMenu {
-                                Button {
-                                    #if canImport(UIKit)
-                                    UIPasteboard.general.string = tx.addressPreview
-                                    #endif
-                                } label: {
-                                    Label("Copy Address Preview", systemImage: "doc.on.doc")
-                                }
-                            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    FNGlassContainer {
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("Search memos or addresses", text: $query)
+                        }
+                        .padding(14)
+                        .fnSelectiveGlass(cornerRadius: 14, interactive: true)
                     }
-                } footer: {
+
+                    FNGlassContainer {
+                        FNGlassCard(padding: 8, cornerRadius: FNTheme.radiusM) {
+                            if filtered.isEmpty {
+                                ContentUnavailableView.search(text: query)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 24)
+                            } else {
+                                VStack(spacing: 0) {
+                                    ForEach(Array(filtered.enumerated()), id: \.element.id) { index, tx in
+                                        FNTransactionRow(tx: tx)
+                                            .padding(.vertical, 10)
+                                            .padding(.horizontal, 8)
+                                            .contextMenu {
+                                                Button {
+                                                    #if canImport(UIKit)
+                                                    UIPasteboard.general.string = tx.addressPreview
+                                                    #endif
+                                                } label: {
+                                                    Label("Copy Address Preview", systemImage: "doc.on.doc")
+                                                }
+                                            }
+                                        if index < filtered.count - 1 {
+                                            Divider().opacity(0.35)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Text("\(filtered.count) transactions")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 4)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 28)
             }
-            .listStyle(.insetGrouped)
+            .background {
+                LinearGradient(
+                    colors: [Color.blue.opacity(0.12), Color.clear, Color.orange.opacity(0.10)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+            }
             .navigationTitle("Activity")
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $query, prompt: "Search memos or addresses")
-            .overlay {
-                if filtered.isEmpty {
-                    ContentUnavailableView.search(text: query)
-                }
-            }
         }
     }
 }

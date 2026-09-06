@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct FNGlassRootView: View {
     @State private var model = FNAppModel.shared
@@ -27,6 +26,7 @@ struct FNGlassRootView: View {
                 .tag(FNTab.settings)
         }
         .tint(FNTheme.accent)
+        // iOS 26: system TabView chrome is Liquid Glass. Clear hosting bg so it refracts.
     }
 }
 
@@ -37,7 +37,7 @@ final class FNGlassHostingController: UIHostingController<FNGlassRootView> {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .clear
     }
 }
 

@@ -4,7 +4,8 @@ import SwiftUI
 enum FNTheme {
     /// Prefer the app tint (system orange) so glass screens match UIKit chrome.
     static let accent = Color.accentColor
-    static let radiusM: CGFloat = 14
+    static let radiusM: CGFloat = 16
+    static let radiusL: CGFloat = 24
 }
 
 extension Font {

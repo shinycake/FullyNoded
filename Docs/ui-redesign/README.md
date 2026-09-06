@@ -7,20 +7,23 @@ This is a **design spike**, not the production shell.
 - Screens use **demo balances, demo node, and a BIP173 example receive address** until live wallet/node bindings exist
 - Receive Copy/Share and Send “Create PSBT” are **disabled** and marked Demo in the glass shell
 - Security rows are non-navigable Demo placeholders (no chevrons)
-- Liquid Glass APIs are gated to iOS 26 with material fallbacks — surface area is intentionally thin
+- Liquid Glass APIs (`.glassEffect`, `.buttonStyle(.glass)`, `GlassEffectContainer`) are gated to **iOS 26 + Xcode 26 / Swift 6.2**; material/capsule fallbacks otherwise
+- Glass is applied to **chrome + heroes + primary buttons** (balance, node, QR, fee, tab bar); content lists stay inset-style
 
 ## Screenshots
 
+Captured on an **iOS 26** Simulator with Xcode 26+ (see `capture-provenance.txt` when present). Older OS captures are rejected by CI.
+
 | File | Screen |
 |------|--------|
-| [home.png](./home.png) | Home — demo banner, balance, actions |
-| [activity.png](./activity.png) | Activity — searchable inset list |
-| [send.png](./send.png) | Send — demo form, PSBT disabled |
-| [receive.png](./receive.png) | Receive — real CI QR + DEMO watermark, Copy/Share off |
-| [settings.png](./settings.png) | Settings — opt-in toggle |
-| [contact-sheet.png](./contact-sheet.png) | Contact sheet |
+| [home.png](./home.png) | Home — glass balance hero, glass Send/Receive, glass node card, system tab chrome |
+| [activity.png](./activity.png) | Activity — glass search + list surface |
+| [send.png](./send.png) | Send — glass form + fee card, Create PSBT disabled |
+| [receive.png](./receive.png) | Receive — glass QR card, DEMO watermark, Copy/Share off |
+| [settings.png](./settings.png) | Settings — glass sections, opt-in toggle |
+| [contact-sheet.png](./contact-sheet.png) | Contact sheet of the above |
 
-CI artifact: **`fullynoded-glass-screenshots`** (PR / manual workflow only).
+CI artifact: **`fullynoded-glass-screenshots`** (PR / manual workflow).
 
 ## Architecture
 
@@ -37,6 +40,9 @@ Deep links (PSBT / `.txn` / Coldcard / account-map) restore the classic tab-bar 
 ## Local
 
 ```bash
-open FNGlassGallery.xcodeproj   # always shows glass + demo data
+# Requires Xcode 26+ and an iOS 26 Simulator runtime
+Scripts/capture-gallery-screenshots.sh
+
+open FNGlassGallery.xcodeproj   # always shows glass + demo data (on iOS 26)
 pod install && open FullyNoded.xcworkspace  # classic by default
 ```

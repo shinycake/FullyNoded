@@ -5,19 +5,26 @@
 set -euo pipefail
 
 # Portable timeout (macOS GHA often lacks GNU timeout).
-# Use Python wait(timeout)+killpg — bash `wait` after kill -9 on xcrun has
-# hung for minutes on GHA when simctl install stalls (hit the 720s alarm).
+# Thread timer + communicate — do NOT rely on wait(timeout) alone; after a
+# killed bootstatus, simctl install has wedged Python wait() until the 720s
+# outer alarm. A daemon thread SIGKILLs the process group on schedule.
 run_with_timeout() {
   local secs="$1"; shift
-  python3 - "$secs" "$@" <<'PY'
-import os, signal, subprocess, sys
+  # Prefer system Python — CI puts a venv python earlier on PATH for Pillow.
+  local py="/usr/bin/python3"
+  [[ -x "$py" ]] || py="$(command -v python3)"
+  "$py" - "$secs" "$@" <<'PY'
+import os, signal, subprocess, sys, threading, time
 
 secs = int(sys.argv[1])
 cmd = sys.argv[2:]
 proc = subprocess.Popen(cmd, start_new_session=True)
-try:
-    rc = proc.wait(timeout=secs)
-except subprocess.TimeoutExpired:
+timed_out = threading.Event()
+killed_at = {"t": 0.0}
+
+def nuke() -> None:
+    timed_out.set()
+    killed_at["t"] = time.monotonic()
     print(f"WARN: timed out after {secs}s: {' '.join(cmd)}", file=sys.stderr, flush=True)
     try:
         os.killpg(proc.pid, signal.SIGKILL)
@@ -27,25 +34,71 @@ except subprocess.TimeoutExpired:
         proc.kill()
     except ProcessLookupError:
         pass
-    # Sweep leftover simctl clients that CoreSimulator may have reparented.
     subprocess.run(
-        ["pkill", "-9", "-f", r"simctl (bootstatus|install|launch|io|boot)"],
+        ["pkill", "-9", "-f", r"simctl (bootstatus|install|launch|io|boot|uninstall|spawn)"],
         check=False,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass
+
+timer = threading.Timer(secs, nuke)
+timer.daemon = True
+timer.start()
+try:
+    # Poll — never block forever in wait()/communicate() if killpg cannot
+    # reap a CoreSimulator-wedged client (that was hanging CI for ~10m).
+    while proc.poll() is None:
+        if timed_out.is_set() and (time.monotonic() - killed_at["t"]) > 8:
+            print(
+                "WARN: process still alive 8s after SIGKILL — abandoning wait",
+                file=sys.stderr,
+                flush=True,
+            )
+            sys.exit(124)
+        time.sleep(0.25)
+finally:
+    timer.cancel()
+
+if timed_out.is_set():
     sys.exit(124)
-sys.exit(rc if rc is not None else 0)
+sys.exit(proc.returncode if proc.returncode is not None else 0)
 PY
 }
 
 sim_is_booted() {
   local udid="$1"
   xcrun simctl list devices booted 2>/dev/null | grep -q "$udid"
+}
+
+# True only if the guest can spawn a trivial process (Booted != ready).
+sim_is_ready() {
+  local udid="$1"
+  run_with_timeout 30 xcrun simctl spawn "$udid" /bin/echo FN_SIM_READY \
+    | grep -q FN_SIM_READY
+}
+
+boot_sim_clean() {
+  local udid="$1"
+  local status_secs="${2:-120}"
+  echo "==> Clean boot $udid"
+  xcrun simctl shutdown "$udid" 2>/dev/null || true
+  # Erase avoids half-booted CoreSimulator state that wedges simctl install.
+  xcrun simctl erase "$udid" 2>/dev/null || true
+  sleep 2
+  xcrun simctl boot "$udid" 2>/dev/null || true
+  if ! run_with_timeout "$status_secs" xcrun simctl bootstatus "$udid" -b; then
+    echo "WARN: bootstatus failed for $udid" >&2
+    return 1
+  fi
+  if ! sim_is_booted "$udid"; then
+    echo "WARN: $udid not in Booted list" >&2
+    return 1
+  fi
+  if ! sim_is_ready "$udid"; then
+    echo "WARN: $udid Booted but spawn not ready" >&2
+    return 1
+  fi
+  return 0
 }
 
 
@@ -199,22 +252,19 @@ if [[ -z "${GITHUB_ACTIONS:-}" ]]; then
   open -g -a Simulator 2>/dev/null || true
   sleep 2
 fi
-xcrun simctl shutdown "$UDID" 2>/dev/null || true
-xcrun simctl boot "$UDID" 2>/dev/null || true
-if ! run_with_timeout 90 xcrun simctl bootstatus "$UDID" -b; then
-  echo "WARN: bootstatus timed out — checking Booted state" >&2
-fi
-if ! sim_is_booted "$UDID"; then
-  echo "WARN: simulator not Booted — retrying boot once" >&2
+
+if ! boot_sim_clean "$UDID" 120; then
+  echo "WARN: first clean boot failed — recreate device and retry" >&2
   xcrun simctl shutdown "$UDID" 2>/dev/null || true
-  sleep 2
-  xcrun simctl boot "$UDID" 2>/dev/null || true
-  run_with_timeout 120 xcrun simctl bootstatus "$UDID" -b || true
-fi
-if ! sim_is_booted "$UDID"; then
-  echo "ERROR: simulator $UDID never reached Booted" >&2
-  xcrun simctl list devices "$IOS26_RUNTIME" >&2 || true
-  exit 1
+  xcrun simctl delete "$UDID" 2>/dev/null || true
+  UDID="$(xcrun simctl create "FN Glass iPhone 16" "$DEVICE_TYPE" "$IOS26_RUNTIME")"
+  echo "Recreated simulator UDID=$UDID"
+  DESTINATION="platform=iOS Simulator,id=$UDID"
+  if ! boot_sim_clean "$UDID" 180; then
+    echo "ERROR: simulator never became ready for install" >&2
+    xcrun simctl list devices "$IOS26_RUNTIME" >&2 || true
+    exit 1
+  fi
 fi
 sleep 2
 
@@ -244,19 +294,18 @@ fi
 echo "App: $APP"
 
 echo "==> Installing $BUNDLE_ID"
-xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+run_with_timeout 30 xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 install_ok=0
 for attempt in 1 2 3; do
   echo "Install attempt $attempt/3"
-  if run_with_timeout 60 xcrun simctl install "$UDID" "$APP"; then
+  if run_with_timeout 45 xcrun simctl install "$UDID" "$APP"; then
     install_ok=1
     break
   fi
-  echo "WARN: simctl install failed/timed out (attempt $attempt) — reboot + retry" >&2
-  xcrun simctl shutdown "$UDID" 2>/dev/null || true
-  sleep 2
-  xcrun simctl boot "$UDID" 2>/dev/null || true
-  run_with_timeout 90 xcrun simctl bootstatus "$UDID" -b || true
+  echo "WARN: simctl install failed/timed out (attempt $attempt) — erase + clean boot + retry" >&2
+  if ! boot_sim_clean "$UDID" 120; then
+    echo "WARN: clean boot after install failure also failed" >&2
+  fi
 done
 if [[ "$install_ok" -ne 1 ]]; then
   echo "ERROR: simctl install failed after retries" >&2

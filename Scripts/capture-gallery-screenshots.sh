@@ -154,28 +154,18 @@ echo "Simulator UDID=$UDID"
 echo "Runtime: $IOS26_LABEL"
 echo "Destination: $DESTINATION"
 
-echo "==> Booting simulator (120s max)"
-# Avoid `open -a Simulator` on CI — Simulator.app can hang forever on headless GHA.
-if [[ -z "${GITHUB_ACTIONS:-}${CI:-}" ]]; then
-  open -a Simulator --args -CurrentDeviceUDID "$UDID" 2>/dev/null || true
-fi
+echo "==> Booting simulator"
+# Never open Simulator.app under GHA — it can hang headless forever.
 xcrun simctl boot "$UDID" 2>/dev/null || true
-booted=0
-for _ in $(seq 1 60); do
-  if xcrun simctl list devices | grep -q "$UDID.*Booted"; then
-    booted=1
-    break
-  fi
-  sleep 2
-done
-if [[ "$booted" -ne 1 ]]; then
-  echo "WARN: simulator not Booted after 120s — continuing anyway" >&2
-fi
-sleep 2
+# bootstatus itself can hang; bound it. Avoid polling `simctl list` (also can stall).
+run_with_timeout 60 xcrun simctl bootstatus "$UDID" -b || {
+  echo "WARN: bootstatus timed out — continuing" >&2
+}
+sleep 1
 
 # Reuse existing build if APP already present under DERIVED (CI builds first)
 echo "==> Looking for FNGlassGallery.app under $DERIVED"
-APP="$(find "$DERIVED/Build/Products" -name 'FNGlassGallery.app' -type d 2>/dev/null | head -1 || true)"
+APP="$(run_with_timeout 30 find "$DERIVED/Build/Products" -name 'FNGlassGallery.app' -type d 2>/dev/null | head -1 || true)"
 if [[ -z "$APP" ]]; then
   echo "==> Building $SCHEME for iOS 26 simulator"
   xcodebuild \

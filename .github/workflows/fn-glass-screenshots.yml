@@ -110,7 +110,9 @@ jobs:
           .fn-shot-venv/bin/python -c "from PIL import Image; print('Pillow OK', Image.__version__)"
           # Pass through CI DerivedData + venv python for contact sheet
           export PATH="${GITHUB_WORKSPACE}/.fn-shot-venv/bin:${PATH}"
+          # Hard-cap the whole capture (boot/install/screens) so the job cannot stall.
           DERIVED="${GITHUB_WORKSPACE}/build/DerivedData" \
+            perl -e 'alarm shift; exec @ARGV' 480 \
             Scripts/capture-gallery-screenshots.sh
 
       - name: Upload screenshots artifact

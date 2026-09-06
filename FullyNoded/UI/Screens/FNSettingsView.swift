@@ -6,7 +6,7 @@ struct FNSettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                // No shared GlassEffectContainer here — a page-level container morphs
+                // No shared GlassEffectContainer — a page-level container morphs
                 // neighboring glass cards and was smashing SECURITY/WALLET/ABOUT text.
                 VStack(alignment: .leading, spacing: 24) {
                     FNGlassCard(interactive: true) {
@@ -123,6 +123,7 @@ struct FNSettingsView: View {
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
+        .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), demo placeholder, not navigable")
     }

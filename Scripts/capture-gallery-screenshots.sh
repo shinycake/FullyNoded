@@ -5,30 +5,44 @@
 set -euo pipefail
 
 # Portable timeout (macOS GHA often lacks GNU timeout).
+# Kill the whole process group — bare kill -9 on xcrun can leave simctl
+# stuck in D-state / reparented, so `wait` never returns (hit the 720s alarm).
 run_with_timeout() {
-  # kill -9 watchdog — simctl often ignores SIGALRM from perl alarm/exec.
   local secs="$1"; shift
+  local pid watcher rc pgid
+  # New process group so negative-PID kill covers xcrun + simctl children.
+  set -m
   "$@" &
-  local pid=$!
+  pid=$!
+  pgid="$pid"
   (
     sleep "$secs"
     if kill -0 "$pid" 2>/dev/null; then
       echo "WARN: timed out after ${secs}s: $*" >&2
-      kill -9 "$pid" 2>/dev/null || true
-      # Also kill orphaned simctl children sharing the process group when possible
+      kill -9 -"$pgid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
       pkill -9 -P "$pid" 2>/dev/null || true
+      # Last resort: any lingering simctl for this command line
+      pkill -9 -f "simctl (bootstatus|install|launch|io)" 2>/dev/null || true
     fi
   ) &
-  local watcher=$!
+  watcher=$!
+  set +m
+  set +e
   wait "$pid"
-  local rc=$?
+  rc=$?
+  set -e
   kill "$watcher" 2>/dev/null || true
   wait "$watcher" 2>/dev/null || true
   # 137/143 = killed by signal; treat as timeout failure
-  if [[ "$rc" -eq 137 || "$rc" -eq 143 ]]; then
+  if [[ "$rc" -eq 137 || "$rc" -eq 143 || "$rc" -eq 124 ]]; then
     return 124
   fi
   return "$rc"
+}
+
+sim_is_booted() {
+  local udid="$1"
+  xcrun simctl list devices booted 2>/dev/null | grep -q "$udid"
 }
 
 
@@ -177,16 +191,29 @@ echo "Runtime: $IOS26_LABEL"
 echo "Destination: $DESTINATION"
 
 echo "==> Booting simulator"
-# Warm CoreSimulator without blocking on Simulator.app (open -g returns immediately).
-open -g -a Simulator 2>/dev/null || true
-sleep 5
+# On GHA, opening Simulator.app has hung boots — prefer headless simctl only.
+if [[ -z "${GITHUB_ACTIONS:-}" ]]; then
+  open -g -a Simulator 2>/dev/null || true
+  sleep 2
+fi
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 xcrun simctl boot "$UDID" 2>/dev/null || true
-run_with_timeout 90 xcrun simctl bootstatus "$UDID" -b || {
-  echo "WARN: bootstatus timed out — continuing" >&2
-}
+if ! run_with_timeout 90 xcrun simctl bootstatus "$UDID" -b; then
+  echo "WARN: bootstatus timed out — checking Booted state" >&2
+fi
+if ! sim_is_booted "$UDID"; then
+  echo "WARN: simulator not Booted — retrying boot once" >&2
+  xcrun simctl shutdown "$UDID" 2>/dev/null || true
+  sleep 2
+  xcrun simctl boot "$UDID" 2>/dev/null || true
+  run_with_timeout 120 xcrun simctl bootstatus "$UDID" -b || true
+fi
+if ! sim_is_booted "$UDID"; then
+  echo "ERROR: simulator $UDID never reached Booted" >&2
+  xcrun simctl list devices "$IOS26_RUNTIME" >&2 || true
+  exit 1
+fi
 sleep 2
-
 
 # Reuse existing build if APP already present under DERIVED (CI builds first)
 echo "==> Looking for FNGlassGallery.app under $DERIVED"
@@ -215,7 +242,23 @@ echo "App: $APP"
 
 echo "==> Installing $BUNDLE_ID"
 xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
-run_with_timeout 90 xcrun simctl install "$UDID" "$APP"
+install_ok=0
+for attempt in 1 2 3; do
+  echo "Install attempt $attempt/3"
+  if run_with_timeout 60 xcrun simctl install "$UDID" "$APP"; then
+    install_ok=1
+    break
+  fi
+  echo "WARN: simctl install failed/timed out (attempt $attempt) — reboot + retry" >&2
+  xcrun simctl shutdown "$UDID" 2>/dev/null || true
+  sleep 2
+  xcrun simctl boot "$UDID" 2>/dev/null || true
+  run_with_timeout 90 xcrun simctl bootstatus "$UDID" -b || true
+done
+if [[ "$install_ok" -ne 1 ]]; then
+  echo "ERROR: simctl install failed after retries" >&2
+  exit 1
+fi
 
 declare -a SCREENS=(home activity send receive settings)
 

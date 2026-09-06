@@ -17,10 +17,17 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private var blacked = UIView()
     
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+        guard let windowScene = (scene as? UIWindowScene) else { return }
+
+        // Redesign branch: Liquid Glass SwiftUI shell is ON by default.
+        // Toggle off in Settings ("Liquid Glass UI") and relaunch for classic UIKit/storyboard.
+        if FNLaunchFlags.useGlassShell {
+            let window = UIWindow(windowScene: windowScene)
+            window.rootViewController = FNGlassHostingController()
+            window.tintColor = UIColor.systemOrange
+            self.window = window
+            window.makeKeyAndVisible()
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

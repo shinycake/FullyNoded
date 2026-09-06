@@ -1,0 +1,60 @@
+name: FN Glass Screenshots
+
+on:
+  push:
+    branches: ["cursor/**", "master", "main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gallery-screenshots:
+    name: Build gallery + capture screenshots
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          echo "Available Xcodes:"
+          ls /Applications | grep -i xcode || true
+          # Prefer newest installed Xcode
+          XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+          xcrun simctl list devices available | head -40
+
+      - name: Build FNGlassGallery (Simulator)
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ui-screenshots
+          xcodebuild \
+            -project FNGlassGallery.xcodeproj \
+            -scheme FNGlassGallery \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath build/DerivedData \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build | xcpretty || xcodebuild \
+            -project FNGlassGallery.xcodeproj \
+            -scheme FNGlassGallery \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath build/DerivedData \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Boot simulator, install, screenshot
+        run: |
+          set -euo pipefail
+          chmod +x Scripts/capture-gallery-screenshots.sh
+          Scripts/capture-gallery-screenshots.sh
+
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fullynoded-glass-screenshots
+          path: artifacts/ui-screenshots/
+          if-no-files-found: warn

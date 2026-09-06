@@ -7,6 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EC835C077179A57C8F140232 /* FNTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781C5B708ED21BBCB168CE2E /* FNTheme.swift */; };
+		BC764B9384F090CF93C8D0A1 /* FNGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6C52570F2BCA42FAD5113D /* FNGlass.swift */; };
+		1B6F72CBD0D3D7B1F2180BB5 /* FNDemoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C6783957D0319D9A900B46 /* FNDemoModels.swift */; };
+		A80A9711BC3B441208706D8E /* FNComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319513F866FA153146AA054F /* FNComponents.swift */; };
+		53716821947F0B175FA69CAA /* FNHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA202615C069F64BDA5CAF69 /* FNHomeView.swift */; };
+		AFCF8E635F4113C3D10D7B57 /* FNActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCCE67CA6A2974E28ECCA3B /* FNActivityView.swift */; };
+		66867C7DF5BF381941F2207C /* FNSendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1704624BC99D1495BD5325 /* FNSendView.swift */; };
+		0B7EE38163BEC96E38BF2CA8 /* FNReceiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45DF561636F6EA48CAB69938 /* FNReceiveView.swift */; };
+		CAFF2FF568086D91AB2341DC /* FNSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFCD94518F785F5D70C7A2 /* FNSettingsView.swift */; };
+		CE43A52514A85076C68A9E55 /* FNGlassRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F45E17DE1A6C38B2B589EEA4 /* FNGlassRootView.swift */; };
+		A9E742C684B184574131A659 /* FNUIGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8BEE28EC9A88E6BB9A2CA7 /* FNUIGalleryView.swift */; };
 		0A00D6A4271BE51600ECAB22 /* TextFileImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00D6A3271BE51600ECAB22 /* TextFileImport.swift */; };
 		0A0ABC332EBDBDEE000329E0 /* UTXOCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 0A0ABC322EBDBDEE000329E0 /* UTXOCell.xib */; };
 		0A0ABC352EBE07F6000329E0 /* TextModalViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0ABC342EBE07F6000329E0 /* TextModalViewController.swift */; };
@@ -202,6 +213,17 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		781C5B708ED21BBCB168CE2E /* FNTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem/FNTheme.swift; sourceTree = "<group>"; };
+		0F6C52570F2BCA42FAD5113D /* FNGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem/FNGlass.swift; sourceTree = "<group>"; };
+		A8C6783957D0319D9A900B46 /* FNDemoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/FNDemoModels.swift; sourceTree = "<group>"; };
+		319513F866FA153146AA054F /* FNComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/FNComponents.swift; sourceTree = "<group>"; };
+		BA202615C069F64BDA5CAF69 /* FNHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNHomeView.swift; sourceTree = "<group>"; };
+		ABCCE67CA6A2974E28ECCA3B /* FNActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNActivityView.swift; sourceTree = "<group>"; };
+		BC1704624BC99D1495BD5325 /* FNSendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNSendView.swift; sourceTree = "<group>"; };
+		45DF561636F6EA48CAB69938 /* FNReceiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNReceiveView.swift; sourceTree = "<group>"; };
+		A9AFCD94518F785F5D70C7A2 /* FNSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screens/FNSettingsView.swift; sourceTree = "<group>"; };
+		F45E17DE1A6C38B2B589EEA4 /* FNGlassRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell/FNGlassRootView.swift; sourceTree = "<group>"; };
+		6E8BEE28EC9A88E6BB9A2CA7 /* FNUIGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell/FNUIGalleryView.swift; sourceTree = "<group>"; };
 		021B4B6C9A2B5B2A991ECF6E /* Pods_FullyNoded.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FullyNoded.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A00D6A3271BE51600ECAB22 /* TextFileImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextFileImport.swift; sourceTree = "<group>"; };
 		0A0ABC322EBDBDEE000329E0 /* UTXOCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = UTXOCell.xib; sourceTree = "<group>"; };
@@ -404,6 +426,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D0485BCE7F6F97A6DEF0E768 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				781C5B708ED21BBCB168CE2E /* FNTheme.swift */,
+				0F6C52570F2BCA42FAD5113D /* FNGlass.swift */,
+				A8C6783957D0319D9A900B46 /* FNDemoModels.swift */,
+				319513F866FA153146AA054F /* FNComponents.swift */,
+				BA202615C069F64BDA5CAF69 /* FNHomeView.swift */,
+				ABCCE67CA6A2974E28ECCA3B /* FNActivityView.swift */,
+				BC1704624BC99D1495BD5325 /* FNSendView.swift */,
+				45DF561636F6EA48CAB69938 /* FNReceiveView.swift */,
+				A9AFCD94518F785F5D70C7A2 /* FNSettingsView.swift */,
+				F45E17DE1A6C38B2B589EEA4 /* FNGlassRootView.swift */,
+				6E8BEE28EC9A88E6BB9A2CA7 /* FNUIGalleryView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
 		0A1F10CB26A1A25600BE2707 /* UR */ = {
 			isa = PBXGroup;
 			children = (
@@ -679,6 +719,7 @@
 		D00B9A262111427200E8B95A /* FullyNoded */ = {
 			isa = PBXGroup;
 			children = (
+				D0485BCE7F6F97A6DEF0E768 /* UI */,
 				D0D507E6256FA0E30048AB2F /* FullyNodedRelease.entitlements */,
 				D0AC9D31234D079000290550 /* FullyNoded.entitlements */,
 				D0286D6221E2678D00954991 /* View Controllers */,
@@ -1155,6 +1196,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EC835C077179A57C8F140232 /* FNTheme.swift in Sources */,
+				BC764B9384F090CF93C8D0A1 /* FNGlass.swift in Sources */,
+				1B6F72CBD0D3D7B1F2180BB5 /* FNDemoModels.swift in Sources */,
+				A80A9711BC3B441208706D8E /* FNComponents.swift in Sources */,
+				53716821947F0B175FA69CAA /* FNHomeView.swift in Sources */,
+				AFCF8E635F4113C3D10D7B57 /* FNActivityView.swift in Sources */,
+				66867C7DF5BF381941F2207C /* FNSendView.swift in Sources */,
+				0B7EE38163BEC96E38BF2CA8 /* FNReceiveView.swift in Sources */,
+				CAFF2FF568086D91AB2341DC /* FNSettingsView.swift in Sources */,
+				CE43A52514A85076C68A9E55 /* FNGlassRootView.swift in Sources */,
+				A9E742C684B184574131A659 /* FNUIGalleryView.swift in Sources */,
 				D0E9B63C211A94C600B416E7 /* Utilities.swift in Sources */,
 				D0C20ED424A6DFE600C62AA4 /* PeerInfo.swift in Sources */,
 				0A83EB3E2C4838BB00502806 /* ColdCardSparrowExport.swift in Sources */,
@@ -1400,7 +1452,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -1458,7 +1510,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -1491,7 +1543,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Fully Noded";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_PREPROCESS = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1542,7 +1594,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Fully Noded";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_PREPROCESS = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1575,7 +1627,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 69FR345CDA;
 				INFOPLIST_FILE = BitSenseTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1600,7 +1652,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 69FR345CDA;
 				INFOPLIST_FILE = BitSenseTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

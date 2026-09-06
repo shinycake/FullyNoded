@@ -37,11 +37,21 @@ struct FNReceiveView: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Demo QR code, not a live receive address")
 
-                        Text(model.receiveAddress)
-                            .font(.fnMono(.footnote))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .textSelection(isDemoAddress ? .disabled : .enabled)
+                        Group {
+                            if isDemoAddress {
+                                Text(model.receiveAddress)
+                                    .font(.fnMono(.footnote))
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .textSelection(.disabled)
+                            } else {
+                                Text(model.receiveAddress)
+                                    .font(.fnMono(.footnote))
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .textSelection(.enabled)
+                            }
+                        }
 
                         HStack(spacing: 12) {
                             Button { } label: {
